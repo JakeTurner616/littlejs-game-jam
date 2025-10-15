@@ -39,16 +39,6 @@
    <image source="Sprites/window_S.png" width="256" height="512"/>
   </tile>
  </tileset>
- <layer id="6" name="Second floor" width="7" height="6" visible="0" offsetx="0" offsety="-78">
-  <data encoding="csv">
-0,0,16,16,0,0,0,
-0,0,16,16,0,0,0,
-0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,
-0,0,0,0,0,0,0
-</data>
- </layer>
  <layer id="7" name="Floor" width="7" height="6">
   <data encoding="csv">
 0,0,0,0,0,16,16,
