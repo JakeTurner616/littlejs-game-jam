@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="isometric" renderorder="right-down" width="7" height="6" tilewidth="256" tileheight="128" infinite="0" backgroundcolor="#3a3a3a" nextlayerid="13" nextobjectid="47">
+<map version="1.10" tiledversion="1.11.2" orientation="isometric" renderorder="right-down" width="7" height="6" tilewidth="256" tileheight="128" infinite="0" backgroundcolor="#3a3a3a" nextlayerid="13" nextobjectid="48">
  <editorsettings>
-  <export target="../../../../Documents/little-js-revive/little-js-vite/assets/map/sample-iso.tmj" format="json"/>
+  <export target="sample-iso.tmj" format="json"/>
  </editorsettings>
  <tileset firstgid="1" name="Sample" tilewidth="256" tileheight="512" tilecount="11" columns="0">
   <grid orientation="orthogonal" width="1" height="1"/>
@@ -77,6 +77,9 @@
  <objectgroup id="12" name="East">
   <object id="46" x="767.333" y="-2">
    <polygon points="0,0 -4,129.333 126,127.333 126.667,4"/>
+  </object>
+  <object id="47" x="462" y="510">
+   <polygon points="0,0 -187,-189 -183,-85 -208,-96 -209,-247 -85,-247 -84,-216 -173,-223 25,-21"/>
   </object>
  </objectgroup>
 </map>

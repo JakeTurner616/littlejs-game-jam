@@ -1,15 +1,17 @@
 /*
-  LittleJS Isometric Map Renderer — PERFECT CENTER VERSION
-  ---------------------------------------------------------
+  LittleJS Isometric Map Renderer — PERFECT CENTER VERSION + OBJECT LAYER DEBUG
+  -----------------------------------------------------------------------------
   ✅ Correct Y-flip and scaling
   ✅ Ground diamond centered in camera
   ✅ Aligned bases for tall 512px sprites
+  ✅ Object layer polygons rendered in red (iso-aligned)
+  ✅ Uses "South" layer (1 tile) as alignment reference
 */
 
 'use strict';
 
 import {
-  engineInit, vec2, hsl, rgb, drawRect, drawTile, debugText,
+  engineInit, vec2, hsl, rgb, drawRect, drawTile, drawLine, debugText,
   setCameraPos, setCameraScale, setShowSplashScreen, setTileFixBleedScale,
   mainCanvas, textureInfos, TextureInfo, TileInfo, keyIsDown
 } from 'littlejsengine';
@@ -18,16 +20,17 @@ import {
 // CONFIG
 // ──────────────────────────────────────────────────────────────
 const MAP_PATH = '/assets/map/sample-iso.tmj';
-const PPU = 128;             // pixels per world unit
+const PPU = 128;
 let TILE_W = 256 / PPU;
 let TILE_H = 128 / PPU;
-const CAMERA_SPEED = 0.1;    // world units per frame
+const CAMERA_SPEED = 0.1;
 
 // ──────────────────────────────────────────────────────────────
 let mapData;
 let rawImages = {};
 let tileInfos = {};
 let layers = [];
+let objectLayers = [];
 let cameraPos = vec2(0, 0);
 
 // ──────────────────────────────────────────────────────────────
@@ -69,8 +72,6 @@ function loadImage(src) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Convert (col,row) → isometric world coords (LittleJS Y-down)
-// ──────────────────────────────────────────────────────────────
 function isoToWorld(c, r, mapW, mapH) {
   const x = (c - r) * (TILE_W / 2);
   const y = -(c + r) * (TILE_H / 2);
@@ -79,9 +80,19 @@ function isoToWorld(c, r, mapW, mapH) {
   return vec2(x + offsetX, y + offsetY);
 }
 
+// Convert raw Tiled pixel coordinate to world units
+function tmxPxToWorld(xPx, yPx, mapW, mapH) {
+  const xWorldUnit = xPx / PPU;
+  const yWorldUnit = yPx / PPU;
+  const xIso = (xWorldUnit - yWorldUnit) * (TILE_W / 2);
+  const yIso = -(xWorldUnit + yWorldUnit) * (TILE_H / 2);
+  const offsetX = (mapW - 1) * (TILE_W / 2);
+  const offsetY = mapH * (TILE_H / 2);
+  return vec2(xIso + offsetX, yIso + offsetY);
+}
+
 // ──────────────────────────────────────────────────────────────
 function gameInit() {
-  // Register textures
   for (const gid in rawImages) {
     const img = rawImages[gid];
     const texInfo = new TextureInfo(img);
@@ -92,14 +103,14 @@ function gameInit() {
   }
 
   layers = mapData.layers.filter(l => l.type === 'tilelayer' && l.visible !== false);
+  objectLayers = mapData.layers.filter(l => l.type === 'objectgroup' && l.visible !== false);
 
   const mapW = mapData.width;
   const mapH = mapData.height;
   const totalW = (mapW + mapH) * (TILE_W / 2);
   const totalH = (mapW + mapH) * (TILE_H / 2);
 
-  // Center horizontally, lower slightly for proper view
-  const mapCenter = vec2(totalW / 2, totalH - 10); // more of a hack but will work for now
+  const mapCenter = vec2(totalW / 2, totalH - 10);
   cameraPos = mapCenter;
 
   setCameraScale(PPU);
@@ -116,9 +127,8 @@ function gameUpdate() {
   if (keyIsDown('ArrowRight')) move.x += CAMERA_SPEED;
   if (keyIsDown('ArrowUp'))    move.y -= CAMERA_SPEED;
   if (keyIsDown('ArrowDown'))  move.y += CAMERA_SPEED;
-
   if (move.x || move.y) {
-    cameraPos = cameraPos.add(move);
+    cameraPos = vec2(cameraPos.x + move.x, cameraPos.y + move.y);
     setCameraPos(cameraPos);
   }
 }
@@ -132,16 +142,15 @@ function gameRender() {
   const { width, height } = mapData;
   let drawn = 0;
 
+  // Tile layers
   for (const layer of layers) {
     const data = layer.data;
     for (let r = 0; r < height; r++) {
       for (let c = 0; c < width; c++) {
         const gid = data[r * width + c];
         if (!gid) continue;
-
         const tinfo = tileInfos[gid];
         const p = isoToWorld(c, r, width, height);
-
         if (tinfo) {
           const img = rawImages[gid];
           const drawSize = vec2(img.width / PPU, img.height / PPU);
@@ -150,6 +159,39 @@ function gameRender() {
           drawTile(drawPos, drawSize, tinfo);
         }
         drawn++;
+      }
+    }
+  }
+
+  // Object layers with South offset calibration
+  let southOffset = vec2(0, 0);
+  const southLayer = objectLayers.find(l => l.name === 'South');
+
+  if (southLayer && southLayer.objects.length) {
+    const refObj = southLayer.objects[0];
+    // Compute anchor from bottommost (south) tile instead of top
+const p = tmxPxToWorld(refObj.x, refObj.y, width, height);
+const tileAnchor = isoToWorld(width - 1, height - 1, width, height);
+southOffset = vec2(tileAnchor.x - p.x, tileAnchor.y - p.y - 4); // -4 to align visually
+    debugText(
+      `offset: ${southOffset.x.toFixed(2)}, ${southOffset.y.toFixed(2)}`,
+      vec2(-3, -4),
+      0.6,
+      '#0f0'
+    );
+  }
+
+  for (const layer of objectLayers) {
+    for (const obj of layer.objects) {
+      if (!obj.polygon) continue;
+      const pts = obj.polygon.map(pt => {
+        const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, width, height);
+        return vec2(w.x + southOffset.x, w.y + southOffset.y);
+      });
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        drawLine(a, b, 0.02, rgb(1, 0, 0));
       }
     }
   }
