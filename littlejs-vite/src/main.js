@@ -59,14 +59,15 @@ async function gameInit() {
   // Load the map
   map = await loadTiledMap(MAP_PATH, PPU);
 
-  // ── MANUAL SPAWN VECTOR (simple and explicit) ────────────────
-  const spawnPos = vec2(8, -6);   // change this to wherever you want the player to start
+  // ── MANUAL SPAWN VECTOR (simple and explicit)
+  const spawnPos = vec2(8, -6); // world-space position
 
-  // Create the player at the spawn point
+  // Create the player and pass PPU for correct movement scaling
   player = new PlayerController(spawnPos, {
     idleStartIndex: 0,
     walkStartIndex: 8
-  });
+  }, PPU);
+
   await player.loadAllAnimations();
 
   // Center camera on player
@@ -79,15 +80,24 @@ function gameUpdate() {
   player?.update();
 }
 
+// ──────────────────────────────────────────────────────────────
+// CAMERA FOLLOW LOGIC
+// ──────────────────────────────────────────────────────────────
 function gameUpdatePost() {
-  // optional future camera smoothing
+  if (player) {
+    cameraPos = vec2(player.pos.x, player.pos.y);
+    setCameraPos(cameraPos);
+  }
 }
 
+// ──────────────────────────────────────────────────────────────
+// RENDERING
+// ──────────────────────────────────────────────────────────────
 function gameRender() {
   renderMap(map, PPU, cameraPos);
   player?.draw();
 }
 
 function gameRenderPost() {
-  // optional post-render debug overlays
+  // Optional debug overlays
 }
