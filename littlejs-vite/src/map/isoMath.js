@@ -15,7 +15,7 @@ export function tmxPxToWorld(xPx, yPx, mapW, mapH, tileW, tileH, ppu) {
   const xWorldUnit = xPx / ppu;
   const yWorldUnit = yPx / ppu;
   const xIso = (xWorldUnit - yWorldUnit) * (tileW / 2);
-  const yIso = -(xWorldUnit + yWorldUnit) * (tileH / 2);
+  const yIso = -(xWorldUnit + yWorldUnit) * (tileH / 2) ;
   const offsetX = (mapW - 1) * (tileW / 2);
   const offsetY = mapH * (tileH / 2);
   return vec2(xIso + offsetX, yIso + offsetY);

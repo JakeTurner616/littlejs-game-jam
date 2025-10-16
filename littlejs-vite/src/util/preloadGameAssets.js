@@ -22,6 +22,14 @@ export async function preloadGameAssets() {
   }, PPU);
   await player.loadAllAnimations();
 
+  // Attach collision polygons from the map
+  if (map.colliders && map.colliders.length) {
+    player.setColliders(map.colliders);
+    console.log(`Loaded ${map.colliders.length} map colliders`);
+  } else {
+    console.warn('No colliders found in map.');
+  }
+
   cachedMap = map;
   cachedPlayer = player;
 }

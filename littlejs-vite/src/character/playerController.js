@@ -1,15 +1,16 @@
 // src/character/playerController.js
 'use strict';
 import {
-  vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos,
+  vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos, drawRect,
 } from 'littlejsengine';
 
 /*
-  PlayerController — self-contained animation generator
-  ------------------------------------------------------
-  ✅ No .json dependencies
-  ✅ Procedurally generates frame rects/durations based on known sheet layout
-  ✅ Works with 8 directions for Idle & Walk
+  PlayerController — self-contained animation generator + map collider support
+  ---------------------------------------------------------------------------
+  ✅ Procedurally generates frame rects/durations
+  ✅ Supports 8 directions
+  ✅ Uses map.colliders as solid boundaries (point-in-polygon feet test)
+  ✅ Draws a blue debug rect showing the current feet position
 */
 
 export class PlayerController {
@@ -18,11 +19,6 @@ export class PlayerController {
     this.vel = vec2(0, 0);
     this.ppu = ppu;
 
-    // ────────────────────────────────────────────────────────
-    // Base speed and isometric correction ratio
-    // tile width:height = 2:1 → rise/run fix ratio = 0.5
-    // (adjust if your tiles differ from 256×128)
-    // ────────────────────────────────────────────────────────
     this.tileRatio = 0.5;
     this.speed = 4 / this.ppu;
     this.direction = 0;
@@ -34,23 +30,23 @@ export class PlayerController {
     this.ready = false;
     this.textureConfig = textureConfig;
     this.currentAnimKey = '';
+
+    this.mapColliders = []; // populated externally
+    this.feetOffset = vec2(0, 0.45); // where the feet are relative to pos
   }
+
+  setColliders(colliders) { this.mapColliders = colliders || []; }
 
   async loadAllAnimations() {
     const dirs = Array.from({ length: 8 }, (_, i) => i + 1);
-
-    // Idle: 22 frames, 256×256 each, grid 5×5 (sheet size 1280×1280)
     const idleMeta = { cols: 5, rows: 5, frameW: 256, frameH: 256, total: 22, duration: 1 / 12 };
-    // Walk: 12 frames, 256×256 each, grid 4×3 (sheet size 1024×768)
     const walkMeta = { cols: 4, rows: 3, frameW: 256, frameH: 256, total: 12, duration: 1 / 12 };
-
     for (const d of dirs) {
       this.frames[`idle_${d}`] = this.generateFrames(idleMeta);
       this.frames[`walk_${d}`] = this.generateFrames(walkMeta);
       this.durations[`idle_${d}`] = Array(idleMeta.total).fill(idleMeta.duration);
       this.durations[`walk_${d}`] = Array(walkMeta.total).fill(walkMeta.duration);
     }
-
     this.ready = true;
   }
 
@@ -83,8 +79,19 @@ export class PlayerController {
       const isoMove = vec2(move.x, move.y * this.tileRatio);
       const mag = Math.hypot(isoMove.x, isoMove.y);
       if (mag > 0) {
-        this.vel = isoMove.scale(this.speed / mag);
-        this.pos = this.pos.add(this.vel);
+        const step = isoMove.scale(this.speed / mag);
+        const nextPos = this.pos.add(step);
+        const feet = nextPos.add(this.feetOffset);
+
+        // ─────────────── Collision Boundary Check ───────────────
+        if (!this.pointInsideAnyCollider(feet)) {
+          this.pos = nextPos;
+          this.vel = step;
+        } else {
+          // rollback / block movement
+          this.vel.set(0, 0);
+        }
+
         const angle = Math.atan2(-move.y, move.x);
         newDir = this.angleToDir(angle);
       }
@@ -115,6 +122,26 @@ export class PlayerController {
     }
   }
 
+  /** Point-in-polygon test (odd–even rule) */
+  pointInsideAnyCollider(point) {
+    for (const collider of this.mapColliders) {
+      if (this.pointInPolygon(point, collider.pts)) return true;
+    }
+    return false;
+  }
+
+  pointInPolygon(p, verts) {
+    let inside = false;
+    for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+      const xi = verts[i].x, yi = verts[i].y;
+      const xj = verts[j].x, yj = verts[j].y;
+      const intersect = ((yi > p.y) !== (yj > p.y)) &&
+        (p.x < (xj - xi) * (p.y - yi) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
   angleToDir(a) {
     if (a < 0) a += Math.PI * 2;
     const offset = Math.PI / 8;
@@ -134,6 +161,10 @@ export class PlayerController {
     const tile = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), texIndex);
     const frameSize = vec2(f.w / 128, f.h / 128);
     drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
+
+    // ─────────────── Feet Debug Rect ───────────────
+    const feet = this.pos.add(this.feetOffset);
+    drawRect(feet, vec2(0.08, 0.04), new Color(0, 0.6, 1, 0.8));
   }
 
   setState(s) { this.state = s; }

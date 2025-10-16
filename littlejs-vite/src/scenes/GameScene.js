@@ -17,6 +17,9 @@ export class GameScene {
     this.enemy = new MeleeCharacterController(vec2(10, -6), 128);
     this.debugAnimList = Object.keys(this.enemy.animationMeta);
     this.debugIndex = 0;
+
+    // Optional registry so we can scale up easily
+    this.entities = [this.player, this.enemy];
   }
 
   async onEnter() {
@@ -70,13 +73,22 @@ export class GameScene {
       return;
     }
 
+    // Draw the map first (background layers)
     renderMap(this.map, this.player.ppu, this.player.pos);
-    this.player.draw();
 
-    // Draw melee test character beside player
-    this.enemy.draw();
+    // ──────────────────────────────────────────────
+    // Y-SORTED ENTITIES
+    // Sort by world-space Y (ascending) so lower (closer) draws last
+    // ──────────────────────────────────────────────
+    const drawables = this.entities
+      .filter(e => e && e.pos && e.draw)
+      .map(e => ({ y: e.pos.y, draw: () => e.draw() }));
 
-    // Label current animation
+    drawables.sort((a, b) => a.y - b.y);
+
+    for (const d of drawables) d.draw();
+
+    // Label current enemy animation (UI overlay)
     drawText(
       this.enemy.state,
       this.enemy.pos.add(vec2(0, 2)),

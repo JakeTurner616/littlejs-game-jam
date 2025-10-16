@@ -1,16 +1,18 @@
 // src/map/mapRenderer.js
-import { drawTile, drawLine, hsl, rgb, drawRect, vec2 } from 'littlejsengine';
+import { drawTile, drawLine, drawText, hsl, rgb, drawRect, vec2 } from 'littlejsengine';
 import { isoToWorld, tmxPxToWorld } from './isoMath.js';
 
 export function renderMap(map, PPU, cameraPos) {
   if (!map.mapData) return;
-  const { mapData, rawImages, tileInfos, layers, objectLayers, TILE_W, TILE_H } = map;
+  const { mapData, rawImages, tileInfos, layers, objectLayers, colliders, TILE_W, TILE_H } = map;
   const { width, height } = mapData;
 
   // Background
   drawRect(vec2(0, 0), vec2(9999, 9999), hsl(0, 0, 0.15));
 
-  // Draw all tile layers
+  // ──────────────────────────────────────────────
+  // TILE LAYERS
+  // ──────────────────────────────────────────────
   for (const layer of layers) {
     const data = layer.data;
     for (let r = 0; r < height; r++) {
@@ -28,8 +30,9 @@ export function renderMap(map, PPU, cameraPos) {
     }
   }
 
-  // Optional: object layer debug draw (disabled by default)
-
+  // ──────────────────────────────────────────────
+  // OBJECT LAYER DEBUG DRAW
+  // ──────────────────────────────────────────────
   for (const layer of objectLayers) {
     for (const obj of layer.objects) {
       if (!obj.polygon) continue;
@@ -39,9 +42,28 @@ export function renderMap(map, PPU, cameraPos) {
       });
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i], b = pts[(i + 1) % pts.length];
-        drawLine(a, b, 0.02, rgb(1, 0, 0));
+        drawLine(a, b, 0.015, rgb(1, 0.5, 0));
       }
     }
   }
 
+  // ──────────────────────────────────────────────
+  // COLLISION LAYER DEBUG DRAW
+  // ──────────────────────────────────────────────
+  if (colliders?.length) {
+    for (const col of colliders) {
+      const pts = col.pts;
+      if (!pts || pts.length < 2) continue;
+
+      // Draw polygon edges
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        drawLine(a, b, 0.03, rgb(1, 0, 0));
+      }
+
+      // Optional label at polygon centroid
+      const centroid = pts.reduce((acc, p) => acc.add(p), vec2(0, 0)).scale(1 / pts.length);
+      drawText(`#${col.id}`, centroid.add(vec2(0, 0.1)), 0.3, rgb(1, 0, 0), 0.02, rgb(0, 0, 0), 'center');
+    }
+  }
 }
