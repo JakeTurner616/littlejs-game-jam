@@ -15,8 +15,8 @@ import {
 import { isoToWorld, worldToIso } from './isoMath.js';
 
 /**
- * Render isometric Tiled map with proper sprite anchoring
- * and a synced hover diamond that matches the debug grid.
+ * Render isometric Tiled map with proper sprite anchoring,
+ * hover highlighting, debug grid, and collider polygons.
  */
 export function renderMap(map, PPU, cameraPos) {
   if (!map.mapData) return;
@@ -142,7 +142,27 @@ export function renderMap(map, PPU, cameraPos) {
   }
 
   // ──────────────────────────────────────────────
-  // OPTIONAL: COLLIDER VISUALIZATION
+  // COLLIDER DEBUG LINES (WORLD SPACE)
   // ──────────────────────────────────────────────
-  if (colliders && colliders.debugDraw) colliders.debugDraw();
+  if (colliders && colliders.length) {
+    const colColor = rgb(1, 0, 0); // red outlines
+    const thickness = 0.06;
+
+    for (const collider of colliders) {
+      const pts = collider.pts;
+      if (!pts || pts.length < 2) continue;
+
+      // Draw closed polygon
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        drawLine(a, b, thickness, colColor);
+      }
+
+      // Optionally draw collider ID
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+      drawText(`#${collider.id}`, vec2(cx, cy), 0.4, colColor, 0);
+    }
+  }
 }

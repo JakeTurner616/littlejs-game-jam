@@ -30,7 +30,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   const objectLayers = mapData.layers.filter(l => l.type === 'objectgroup');
 
   // ─────────────────────────────────────────────────────
-  // COLLISION POLYGONS: extract from object layers named "Collision"
+  // COLLISION POLYGONS
   // ─────────────────────────────────────────────────────
   const colliders = [];
   for (const layer of objectLayers) {
@@ -49,17 +49,16 @@ export async function loadTiledMap(MAP_PATH, PPU) {
           TILE_H,
           PPU
         );
-        return vec2(w.x, w.y);
+
+        // ✅ shift collider down by one tile height
+        return vec2(w.x, w.y - TILE_H);
       });
 
-      // ────── Reliability Improvements ──────
       pts = cleanAndInflatePolygon(pts, 0.002);
-
       colliders.push({ id: obj.id, name: obj.name, pts });
     }
   }
 
-  // Return everything (for rendering + collision)
   return {
     mapData,
     rawImages,
@@ -78,7 +77,6 @@ export async function loadTiledMap(MAP_PATH, PPU) {
 function cleanAndInflatePolygon(pts, inflate = 0.002) {
   if (!pts.length) return pts;
 
-  // Remove duplicate / near-zero-length edges
   const EPS = 1e-5;
   const clean = [];
   for (let i = 0; i < pts.length; i++) {
@@ -88,7 +86,7 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
 
   if (clean.length < 3) return clean;
 
-  // Compute area to ensure clockwise order (negative = CCW)
+  // Ensure clockwise order
   let area = 0;
   for (let i = 0; i < clean.length; i++) {
     const a = clean[i], b = clean[(i + 1) % clean.length];
@@ -96,7 +94,6 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
   }
   if (area < 0) clean.reverse();
 
-  // Inflate small polygons slightly
   const cx = clean.reduce((s, p) => s + p.x, 0) / clean.length;
   const cy = clean.reduce((s, p) => s + p.y, 0) / clean.length;
   const center = vec2(cx, cy);
@@ -110,7 +107,6 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
   return inflated;
 }
 
-// ── Helpers ─────────────────────────────────────────────
 async function fetchJSON(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
