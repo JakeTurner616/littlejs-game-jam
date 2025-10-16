@@ -4,6 +4,14 @@ import {
   vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos,
 } from 'littlejsengine';
 
+/*
+  PlayerController — self-contained animation generator
+  ------------------------------------------------------
+  ✅ No .json dependencies
+  ✅ Procedurally generates frame rects/durations based on known sheet layout
+  ✅ Works with 8 directions for Idle & Walk
+*/
+
 export class PlayerController {
   constructor(pos = vec2(0, 0), textureConfig = { idleStartIndex: 0, walkStartIndex: 8 }, ppu = 128) {
     this.pos = vec2(pos.x, pos.y);
@@ -15,7 +23,7 @@ export class PlayerController {
     // tile width:height = 2:1 → rise/run fix ratio = 0.5
     // (adjust if your tiles differ from 256×128)
     // ────────────────────────────────────────────────────────
-    this.tileRatio = 0.5;   // TILE_H / TILE_W for iso projection
+    this.tileRatio = 0.5;
     this.speed = 4 / this.ppu;
     this.direction = 0;
     this.state = 'idle';
@@ -30,21 +38,32 @@ export class PlayerController {
 
   async loadAllAnimations() {
     const dirs = Array.from({ length: 8 }, (_, i) => i + 1);
+
+    // Idle: 22 frames, 256×256 each, grid 5×5 (sheet size 1280×1280)
+    const idleMeta = { cols: 5, rows: 5, frameW: 256, frameH: 256, total: 22, duration: 1 / 12 };
+    // Walk: 12 frames, 256×256 each, grid 4×3 (sheet size 1024×768)
+    const walkMeta = { cols: 4, rows: 3, frameW: 256, frameH: 256, total: 12, duration: 1 / 12 };
+
     for (const d of dirs) {
-      try {
-        const [idleData, walkData] = await Promise.all([
-          fetch(`/assets/character/Idle/Businessman_Idle_dir${d}.json`).then(r => r.json()),
-          fetch(`/assets/character/Walk/Businessman_Walk_dir${d}.json`).then(r => r.json()),
-        ]);
-        this.frames[`idle_${d}`] = idleData.frames.map(f => f.frame);
-        this.frames[`walk_${d}`] = walkData.frames.map(f => f.frame);
-        this.durations[`idle_${d}`] = idleData.frames.map(f => f.duration / 1000);
-        this.durations[`walk_${d}`] = walkData.frames.map(f => f.duration / 1000);
-      } catch (e) {
-        console.warn(`Missing animation dir ${d}`, e);
+      this.frames[`idle_${d}`] = this.generateFrames(idleMeta);
+      this.frames[`walk_${d}`] = this.generateFrames(walkMeta);
+      this.durations[`idle_${d}`] = Array(idleMeta.total).fill(idleMeta.duration);
+      this.durations[`walk_${d}`] = Array(walkMeta.total).fill(walkMeta.duration);
+    }
+
+    this.ready = true;
+  }
+
+  generateFrames({ cols, rows, frameW, frameH, total }) {
+    const frames = [];
+    let count = 0;
+    for (let y = 0; y < rows && count < total; y++) {
+      for (let x = 0; x < cols && count < total; x++) {
+        frames.push({ x: x * frameW, y: y * frameH, w: frameW, h: frameH });
+        count++;
       }
     }
-    this.ready = true;
+    return frames;
   }
 
   update() {
@@ -61,14 +80,11 @@ export class PlayerController {
     let newDir = this.direction;
 
     if (isMoving) {
-      // apply isometric ratio correction before normalization
       const isoMove = vec2(move.x, move.y * this.tileRatio);
-
       const mag = Math.hypot(isoMove.x, isoMove.y);
       if (mag > 0) {
         this.vel = isoMove.scale(this.speed / mag);
         this.pos = this.pos.add(this.vel);
-
         const angle = Math.atan2(-move.y, move.x);
         newDir = this.angleToDir(angle);
       }
