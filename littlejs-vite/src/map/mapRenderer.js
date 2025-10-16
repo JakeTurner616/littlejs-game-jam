@@ -29,12 +29,12 @@ export function renderMap(map, PPU, cameraPos) {
   }
 
   // Optional: object layer debug draw (disabled by default)
-  /*
+
   for (const layer of objectLayers) {
     for (const obj of layer.objects) {
       if (!obj.polygon) continue;
       const pts = obj.polygon.map(pt => {
-        const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, width, height, TILE_W, TILE_H, PPU);
+        const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, width, height - 8, TILE_W, TILE_H, PPU);
         return vec2(w.x, w.y);
       });
       for (let i = 0; i < pts.length; i++) {
@@ -43,5 +43,5 @@ export function renderMap(map, PPU, cameraPos) {
       }
     }
   }
-  */
+
 }
