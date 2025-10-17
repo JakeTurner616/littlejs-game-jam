@@ -74,7 +74,8 @@ export class GameScene {
     }
 
     // Draw the map first (background layers)
-    renderMap(this.map, this.player.ppu, this.player.pos);
+    renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
+
 
     // ──────────────────────────────────────────────
     // Y-SORTED ENTITIES

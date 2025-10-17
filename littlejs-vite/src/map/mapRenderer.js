@@ -11,33 +11,25 @@ import {
   rgb,
   mousePosScreen,
   screenToWorld,
+  mouseWasPressed,
 } from 'littlejsengine';
 import { isoToWorld, worldToIso } from './isoMath.js';
 
 /**
- * Render isometric Tiled map with proper sprite anchoring,
- * hover highlighting, debug grid, and collider polygons.
+ * Render isometric Tiled map with grid, hover highlight, player highlight,
+ * collider debug, and click-based tile inspector.
  */
-export function renderMap(map, PPU, cameraPos) {
+export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec2(0, 0.45)) {
   if (!map.mapData) return;
 
-  const {
-    mapData,
-    rawImages,
-    tileInfos,
-    layers,
-    objectLayers,
-    colliders,
-    TILE_W,
-    TILE_H,
-  } = map;
+  const { mapData, rawImages, tileInfos, layers, colliders, TILE_W, TILE_H } = map;
   const { width, height } = mapData;
 
   // Background
   drawRect(vec2(0, 0), vec2(9999, 9999), hsl(0, 0, 0.15));
 
   // ──────────────────────────────────────────────
-  // RENDER TILE LAYERS
+  // TILE LAYER RENDERING
   // ──────────────────────────────────────────────
   for (const layer of layers) {
     if (!layer.visible || layer.type !== 'tilelayer') continue;
@@ -55,114 +47,165 @@ export function renderMap(map, PPU, cameraPos) {
 
         const imgW_world = img.width / PPU;
         const imgH_world = img.height / PPU;
-        const gridHeight = TILE_H;
-        const anchorOffsetY = (imgH_world - gridHeight) / 2;
+        const anchorOffsetY = (imgH_world - TILE_H) / 2;
 
-        drawTile(
-          worldPos.subtract(vec2(0, anchorOffsetY)),
-          vec2(imgW_world, imgH_world),
-          info
-        );
+        drawTile(worldPos.subtract(vec2(0, anchorOffsetY)),
+          vec2(imgW_world, imgH_world), info);
       }
     }
   }
 
   // ──────────────────────────────────────────────
-  // DEBUG GRID
+  // COMMON MEASUREMENTS
   // ──────────────────────────────────────────────
-  const showDebugTiles = true;
-  const lineColor = rgb(0, 1, 0);
-  const textColor = rgb(1, 1, 0);
-
   const halfW = TILE_W / 2;
   const halfH = TILE_H / 2;
-  const imgH_world = 4.0; // 512px / 128 PPU
-  const anchorOffsetY = (imgH_world - TILE_H) / 2 * 2;
+  const anchorOffsetY = ((4.0) - TILE_H) / 2 * 2;
+
+  // ──────────────────────────────────────────────
+  // 🟩 DEBUG GRID
+  // ──────────────────────────────────────────────
+  const gridColor = rgb(0, 1, 0);
+  const showDebugTiles = true;
 
   if (showDebugTiles) {
     for (let r = 0; r < height; r++) {
       for (let c = 0; c < width; c++) {
-        const p = isoToWorld(c, r, width, height, TILE_W, TILE_H).subtract(
-          vec2(0, anchorOffsetY)
-        );
-
-        const top = vec2(p.x, p.y + halfH);
-        const right = vec2(p.x + halfW, p.y);
-        const bottom = vec2(p.x, p.y - halfH);
-        const left = vec2(p.x - halfW, p.y);
-
-        drawLine(top, right, 0.02, lineColor);
-        drawLine(right, bottom, 0.02, lineColor);
-        drawLine(bottom, left, 0.02, lineColor);
-        drawLine(left, top, 0.02, lineColor);
-
-        drawText(
-          `${c},${r}`,
-          p.add(vec2(0, -TILE_H * 0.4)),
-          TILE_H * 0.3,
-          textColor,
-          0,
-          undefined,
-          'center'
-        );
+        const p = isoToWorld(c, r, width, height, TILE_W, TILE_H)
+          .subtract(vec2(0, anchorOffsetY));
+        const diamond = [
+          vec2(p.x, p.y + halfH),
+          vec2(p.x + halfW, p.y),
+          vec2(p.x, p.y - halfH),
+          vec2(p.x - halfW, p.y),
+        ];
+        for (let i = 0; i < 4; i++)
+          drawLine(diamond[i], diamond[(i + 1) % 4], 0.02, gridColor);
       }
     }
   }
 
   // ──────────────────────────────────────────────
-  // HOVER TILE MARKER 
+  // 🟨 HOVER TILE MARKER
   // ──────────────────────────────────────────────
   const worldMouse = screenToWorld(mousePosScreen);
-  const iso = worldToIso(
+  const isoMouse = worldToIso(
     worldMouse.x,
     worldMouse.y,
     width,
     height,
     TILE_W,
     TILE_H,
-    anchorOffsetY - 0.5 // matches debug grid 
+    anchorOffsetY - 0.5
   );
-  const c = Math.floor(iso.x);
-  const r = Math.floor(iso.y);
+  const cMouse = Math.floor(isoMouse.x);
+  const rMouse = Math.floor(isoMouse.y);
 
-  if (c >= 0 && c < width && r >= 0 && r < height) {
-    const p = isoToWorld(c, r, width, height, TILE_W, TILE_H).subtract(
-      vec2(0, anchorOffsetY)
-    );
-    const top = vec2(p.x, p.y + halfH);
-    const right = vec2(p.x + halfW, p.y);
-    const bottom = vec2(p.x, p.y - halfH);
-    const left = vec2(p.x - halfW, p.y);
-
-    const hoverColor = rgb(1, 1, 0);
-    drawLine(top, right, 0.05, hoverColor);
-    drawLine(right, bottom, 0.05, hoverColor);
-    drawLine(bottom, left, 0.05, hoverColor);
-    drawLine(left, top, 0.05, hoverColor);
+  let hoverWorldPos = null;
+  if (cMouse >= 0 && cMouse < width && rMouse >= 0 && rMouse < height) {
+    hoverWorldPos = isoToWorld(cMouse, rMouse, width, height, TILE_W, TILE_H)
+      .subtract(vec2(0, anchorOffsetY));
+    const diamond = [
+      vec2(hoverWorldPos.x, hoverWorldPos.y + halfH),
+      vec2(hoverWorldPos.x + halfW, hoverWorldPos.y),
+      vec2(hoverWorldPos.x, hoverWorldPos.y - halfH),
+      vec2(hoverWorldPos.x - halfW, hoverWorldPos.y),
+    ];
+    const yellow = rgb(1, 1, 0);
+    for (let i = 0; i < 4; i++)
+      drawLine(diamond[i], diamond[(i + 1) % 4], 0.05, yellow);
   }
 
   // ──────────────────────────────────────────────
-  // COLLIDER DEBUG LINES (WORLD SPACE)
+  // 🔵 PLAYER TILE MARKER
+  // ──────────────────────────────────────────────
+  if (playerPos) {
+    const feet = playerPos.add(playerFeetOffset);
+    const isoPlayer = worldToIso(
+      feet.x,
+      feet.y,
+      width,
+      height,
+      TILE_W,
+      TILE_H,
+      anchorOffsetY - 0.5
+    );
+    const cPlayer = Math.floor(isoPlayer.x);
+    const rPlayer = Math.floor(isoPlayer.y);
+
+    if (cPlayer >= 0 && cPlayer < width && rPlayer >= 0 && rPlayer < height) {
+      const p = isoToWorld(cPlayer, rPlayer, width, height, TILE_W, TILE_H)
+        .subtract(vec2(0, anchorOffsetY));
+      const diamond = [
+        vec2(p.x, p.y + halfH),
+        vec2(p.x + halfW, p.y),
+        vec2(p.x, p.y - halfH),
+        vec2(p.x - halfW, p.y),
+      ];
+      const blue = rgb(0, 0.6, 1);
+      for (let i = 0; i < 4; i++)
+        drawLine(diamond[i], diamond[(i + 1) % 4], 0.06, blue);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // 🔴 COLLIDER DEBUG LINES
   // ──────────────────────────────────────────────
   if (colliders && colliders.length) {
-    const colColor = rgb(1, 0, 0); // red outlines
-    const thickness = 0.06;
-
+    const red = rgb(1, 0, 0);
     for (const collider of colliders) {
       const pts = collider.pts;
       if (!pts || pts.length < 2) continue;
-
-      // Draw closed polygon
-      for (let i = 0; i < pts.length; i++) {
-        const a = pts[i];
-        const b = pts[(i + 1) % pts.length];
-        drawLine(a, b, thickness, colColor);
-      }
-
-      // Optionally draw collider ID
-      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-      drawText(`#${collider.id}`, vec2(cx, cy), 0.4, colColor, 0);
+      for (let i = 0; i < pts.length; i++)
+        drawLine(pts[i], pts[(i + 1) % pts.length], 0.06, red);
     }
+  }
+
+  // ──────────────────────────────────────────────
+  // 🧠 TILE DEBUGGER (CLICK)
+  // ──────────────────────────────────────────────
+  if (mouseWasPressed(0) && hoverWorldPos) {
+    const info = [];
+    info.push('──────────── TILE DEBUG ────────────');
+    info.push(`Grid: c=${cMouse}, r=${rMouse}`);
+    info.push(`World: x=${hoverWorldPos.x.toFixed(3)}, y=${hoverWorldPos.y.toFixed(3)}`);
+
+    for (const layer of layers) {
+      if (layer.type !== 'tilelayer' || !layer.visible) continue;
+      const gid = layer.data[rMouse * width + cMouse];
+      info.push(`Layer: "${layer.name}"  GID: ${gid}`);
+    }
+
+    const neighbors = [
+      { name: 'N', c: cMouse, r: rMouse - 1 },
+      { name: 'S', c: cMouse, r: rMouse + 1 },
+      { name: 'E', c: cMouse + 1, r: rMouse },
+      { name: 'W', c: cMouse - 1, r: rMouse },
+    ];
+    info.push('Neighbors:');
+    for (const n of neighbors) {
+      if (n.c < 0 || n.r < 0 || n.c >= width || n.r >= height) continue;
+      const gid = layers[0].data[n.r * width + n.c];
+      info.push(`  ${n.name}: c=${n.c}, r=${n.r}, gid=${gid}`);
+    }
+
+    // Collider overlap test (rough AABB)
+    const tileCenter = hoverWorldPos;
+    const min = vec2(tileCenter.x - halfW, tileCenter.y - halfH);
+    const max = vec2(tileCenter.x + halfW, tileCenter.y + halfH);
+    const overlapping = colliders.filter(col =>
+      col.pts.some(p => p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y)
+    );
+    if (overlapping.length) {
+      info.push(`Overlapping Colliders: ${overlapping.length}`);
+      for (const c of overlapping)
+        info.push(`  • ID=${c.id}, Name=${c.name || '(unnamed)'}`);
+    } else {
+      info.push('Overlapping Colliders: none');
+    }
+
+    console.groupCollapsed(`🧭 Tile (${cMouse},${rMouse}) Debug`);
+    info.forEach(line => console.log(line));
+    console.groupEnd();
   }
 }
