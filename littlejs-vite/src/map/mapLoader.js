@@ -28,19 +28,9 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     tileInfos[gid] = new TileInfo(vec2(0, 0), vec2(img.width, img.height), texIndex);
   }
 
-  // ──────────────────────────────────────────────
-  // FILTER TILE AND OBJECT LAYERS
-  // ──────────────────────────────────────────────
   const layers = mapData.layers.filter(l => l.type === 'tilelayer');
-
-  // ✅ NEW: include all object layers (e.g. Collision, DepthPolygons)
   const objectLayers = mapData.layers.filter(l => l.type === 'objectgroup');
-
-  // Debug check — verify DepthPolygons is loaded
-  console.log(
-    '[MapLoader] Object Layers:',
-    objectLayers.map(l => l.name)
-  );
+  console.log('[MapLoader] Object Layers:', objectLayers.map(l => l.name));
 
   // ──────────────────────────────────────────────
   // COLLISION POLYGONS
@@ -62,7 +52,6 @@ export async function loadTiledMap(MAP_PATH, PPU) {
           TILE_H,
           PPU
         );
-        // shift collider down slightly to match base plane
         return vec2(w.x, w.y - TILE_H);
       });
 
@@ -71,15 +60,12 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // RETURN MAP OBJECT
-  // ──────────────────────────────────────────────
   return {
     mapData,
     rawImages,
     tileInfos,
     layers,
-    objectLayers, // ✅ ensures DepthPolygons is available for renderMap
+    objectLayers,
     colliders,
     TILE_W,
     TILE_H,
@@ -98,10 +84,8 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
     if (a.distance(b) > EPS) clean.push(a);
   }
-
   if (clean.length < 3) return clean;
 
-  // Ensure clockwise order
   let area = 0;
   for (let i = 0; i < clean.length; i++) {
     const a = clean[i], b = clean[(i + 1) % clean.length];
@@ -118,7 +102,6 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
     const len = dir.length() || 1;
     return center.add(dir.scale(1 + inflate / len));
   });
-
   return inflated;
 }
 
