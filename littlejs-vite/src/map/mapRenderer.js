@@ -2,16 +2,10 @@
 'use strict';
 
 import {
-  drawTile,
-  drawRect,
-  drawLine,
-  vec2,
-  hsl,
-  Color,
-  clamp,
+  drawTile, drawRect, vec2, hsl, Color, clamp
 } from 'littlejsengine';
 import { isoToWorld, tmxPxToWorld } from './isoMath.js';
-import { renderMapDebug } from './mapDebug.js';
+import { renderMapDebug, drawDepthDebug } from './mapDebug.js';
 
 /*───────────────────────────────────────────────────────────────
   MAP DEBUG CONTROL
@@ -23,7 +17,7 @@ export function isDebugMapEnabled() { return DEBUG_MAP_ENABLED; }
 /*───────────────────────────────────────────────────────────────
   HELPERS
 ───────────────────────────────────────────────────────────────*/
-function getPolygonDepthYAtX(p, poly) {
+export function getPolygonDepthYAtX(p, poly) {
   const intersections = [];
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i], b = poly[j];
@@ -99,7 +93,7 @@ function pixelOverlapCheck(playerFeet, tileWorldPos, img, imgW_world, imgH_world
 }
 
 /*───────────────────────────────────────────────────────────────
-  RENDER MAP WITH DEPTH FADE + DEBUG OVERLAYS
+  MAIN RENDER FUNCTION
 ───────────────────────────────────────────────────────────────*/
 const fadeAlphaMap = new Map(); // keyed by layer:r,c
 
@@ -146,15 +140,19 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
               img, imgW_world, imgH_world, PPU, TILE_H
             );
             if (pixelOverlap)
-              targetAlpha = clamp(1.0 - Math.min(Math.max((dist - 0.05) / 0.2, 0), 1), 0.35, 1.0);
+              targetAlpha = clamp(
+                1.0 - Math.min(Math.max((dist - 0.05) / 0.2, 0), 1),
+                0.35, 1.0
+              );
           }
         }
 
-        // 🔄 Smooth fade (debounce)
+        // Smooth fade debounce
         const fadeSpeed = 0.15;
         currentAlpha += (targetAlpha - currentAlpha) * fadeSpeed;
         fadeAlphaMap.set(tileKey, currentAlpha);
 
+        // Draw tile
         drawTile(
           worldPos.subtract(vec2(0, anchorOffsetY)),
           vec2(imgW_world, imgH_world),
@@ -164,27 +162,9 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
           false
         );
 
-        /*───────────────────────────────────────────────
-          DEBUG OVERLAYS
-        ───────────────────────────────────────────────*/
-        if (DEBUG_MAP_ENABLED && wallPoly) {
-          const pts = wallPoly.worldPoly;
-          // Yellow polygon outlines the depth volume
-          for (let i = 0; i < pts.length; i++) {
-            const a = pts[i], b = pts[(i + 1) % pts.length];
-            drawLine(a, b, 0.03, new Color(1, 0.8, 0.1, 0.9));
-          }
-
-          // Blue casted depth plane moving across polygon
-          const polyY = getPolygonDepthYAtX(playerFeet, wallPoly.worldPoly);
-          if (polyY !== null)
-            drawLine(
-              vec2(playerFeet.x - 0.15, polyY),
-              vec2(playerFeet.x + 0.15, polyY),
-              0.05,
-              new Color(0.1, 0.6, 1, 0.9)
-            );
-        }
+        // Modularized debug call
+        if (DEBUG_MAP_ENABLED && wallPoly)
+          drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX);
       }
     }
   }
