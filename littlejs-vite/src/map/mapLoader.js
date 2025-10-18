@@ -9,7 +9,9 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   const mapW = mapData.width;
   const mapH = mapData.height;
 
-  // ── Load tileset images ───────────────────────────────
+  // ──────────────────────────────────────────────
+  // LOAD TILESET IMAGES
+  // ──────────────────────────────────────────────
   const tilesetDef = mapData.tilesets[0];
   const firstgid = tilesetDef.firstgid || 1;
   const rawImages = {};
@@ -26,19 +28,30 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     tileInfos[gid] = new TileInfo(vec2(0, 0), vec2(img.width, img.height), texIndex);
   }
 
+  // ──────────────────────────────────────────────
+  // FILTER TILE AND OBJECT LAYERS
+  // ──────────────────────────────────────────────
   const layers = mapData.layers.filter(l => l.type === 'tilelayer');
+
+  // ✅ NEW: include all object layers (e.g. Collision, DepthPolygons)
   const objectLayers = mapData.layers.filter(l => l.type === 'objectgroup');
 
-  // ─────────────────────────────────────────────────────
+  // Debug check — verify DepthPolygons is loaded
+  console.log(
+    '[MapLoader] Object Layers:',
+    objectLayers.map(l => l.name)
+  );
+
+  // ──────────────────────────────────────────────
   // COLLISION POLYGONS
-  // ─────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────
   const colliders = [];
   for (const layer of objectLayers) {
     if (layer.name !== 'Collision') continue;
     for (const obj of layer.objects || []) {
       if (!obj.polygon) continue;
 
-      // Convert polygon points to world space
+      // Convert polygon points from Tiled pixels → world-space
       let pts = obj.polygon.map(pt => {
         const w = tmxPxToWorld(
           obj.x + pt.x,
@@ -49,8 +62,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
           TILE_H,
           PPU
         );
-
-        // ✅ shift collider down by one tile height
+        // shift collider down slightly to match base plane
         return vec2(w.x, w.y - TILE_H);
       });
 
@@ -59,15 +71,18 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     }
   }
 
+  // ──────────────────────────────────────────────
+  // RETURN MAP OBJECT
+  // ──────────────────────────────────────────────
   return {
     mapData,
     rawImages,
     tileInfos,
     layers,
-    objectLayers,
+    objectLayers, // ✅ ensures DepthPolygons is available for renderMap
     colliders,
     TILE_W,
-    TILE_H
+    TILE_H,
   };
 }
 
@@ -107,6 +122,9 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
   return inflated;
 }
 
+// ──────────────────────────────────────────────
+// Utility: JSON & Image Loaders
+// ──────────────────────────────────────────────
 async function fetchJSON(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
