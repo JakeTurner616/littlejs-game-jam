@@ -23,7 +23,7 @@ export class GameScene {
     this.entities = [];
 
     // Optional debug toggle
-    setDebugMapEnabled(true);
+    setDebugMapEnabled(false);
   }
 
   // ──────────────────────────────────────────────
