@@ -33,6 +33,23 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   console.log('[MapLoader] Object Layers:', objectLayers.map(l => l.name));
 
   // ──────────────────────────────────────────────
+  // FLOOR OFFSET LAYER DETECTION (Match Tiled semantics)
+  // ──────────────────────────────────────────────
+  const FLOOR_STEP_PX = 78;
+  const floorOffsets = new Map();
+
+  for (const layer of layers) {
+    const match = layer.name.match(/^FloorOffset(\d+)$/i);
+    if (match) {
+      const index = parseInt(match[1]);
+      // emulate Tiled’s behavior: higher floors have *negative* offsetY (up)
+      const offsetWorld = -(FLOOR_STEP_PX * (index + 1)) / PPU;
+      floorOffsets.set(layer.name, offsetWorld);
+      console.log(`[MapLoader] Found ${layer.name} → offset ${offsetWorld.toFixed(3)} world units (matches Tiled -Y = up)`);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // COLLISION POLYGONS
   // ──────────────────────────────────────────────
   const colliders = [];
@@ -40,8 +57,6 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     if (layer.name !== 'Collision') continue;
     for (const obj of layer.objects || []) {
       if (!obj.polygon) continue;
-
-      // Convert polygon points from Tiled pixels → world-space
       let pts = obj.polygon.map(pt => {
         const w = tmxPxToWorld(
           obj.x + pt.x,
@@ -54,7 +69,6 @@ export async function loadTiledMap(MAP_PATH, PPU) {
         );
         return vec2(w.x, w.y - TILE_H);
       });
-
       pts = cleanAndInflatePolygon(pts, 0.002);
       colliders.push({ id: obj.id, name: obj.name, pts });
     }
@@ -69,15 +83,12 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     colliders,
     TILE_W,
     TILE_H,
+    floorOffsets,
   };
 }
 
-// ──────────────────────────────────────────────
-// Helper: clean small or skinny polygons
-// ──────────────────────────────────────────────
 function cleanAndInflatePolygon(pts, inflate = 0.002) {
   if (!pts.length) return pts;
-
   const EPS = 1e-5;
   const clean = [];
   for (let i = 0; i < pts.length; i++) {
@@ -85,29 +96,22 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
     if (a.distance(b) > EPS) clean.push(a);
   }
   if (clean.length < 3) return clean;
-
   let area = 0;
   for (let i = 0; i < clean.length; i++) {
     const a = clean[i], b = clean[(i + 1) % clean.length];
     area += a.x * b.y - b.x * a.y;
   }
   if (area < 0) clean.reverse();
-
   const cx = clean.reduce((s, p) => s + p.x, 0) / clean.length;
   const cy = clean.reduce((s, p) => s + p.y, 0) / clean.length;
   const center = vec2(cx, cy);
-
-  const inflated = clean.map(p => {
+  return clean.map(p => {
     const dir = p.subtract(center);
     const len = dir.length() || 1;
     return center.add(dir.scale(1 + inflate / len));
   });
-  return inflated;
 }
 
-// ──────────────────────────────────────────────
-// Utility: JSON & Image Loaders
-// ──────────────────────────────────────────────
 async function fetchJSON(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
