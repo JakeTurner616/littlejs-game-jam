@@ -53,19 +53,33 @@ export function worldToIso(worldX, worldY, mapW, mapH, tileW, tileH, anchorOffse
 /**
  * Convert Tiled pixel coordinates → world-space (south anchor)
  */
-export function tmxPxToWorld(xPx, yPx, mapW, mapH, tileW, tileH, ppu) {
+// src/map/isoMath.js
+export function tmxPxToWorld(
+  xPx,
+  yPx,
+  mapW,
+  mapH,
+  tileW,
+  tileH,
+  ppu,
+  centered = true
+) {
   const tw = tileW;
   const th = TILE_PX_H / (TILE_PX_W / tileW);
 
   const xWorld = xPx / ppu;
   const yWorld = yPx / ppu;
 
-  // Tiled uses Y-down, so we need to convert
+  // Tiled uses Y-down, so invert for isometric
   const xIso = (xWorld - yWorld) * (tw / 2);
   const yIso = -(xWorld + yWorld) * (th / 2);
 
-  const offsetX = (mapW - 1) * (tw / 2);
-  const offsetY = (mapH - 1) * (th / 2);
+  // ✅ Corrected offsets — match isoToWorld()
+  let offsetX = 0, offsetY = 0;
+  if (centered) {
+    offsetX = (mapW - 1) * (tw / 2);
+    offsetY = -2; // no vertical recentering
+  }
 
   return vec2(xIso + offsetX, yIso + offsetY);
 }

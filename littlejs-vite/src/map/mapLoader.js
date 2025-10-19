@@ -49,31 +49,32 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // COLLISION POLYGONS
-  // ──────────────────────────────────────────────
-  const colliders = [];
-  for (const layer of objectLayers) {
-    if (layer.name !== 'Collision') continue;
-    for (const obj of layer.objects || []) {
-      if (!obj.polygon) continue;
-      let pts = obj.polygon.map(pt => {
-        const w = tmxPxToWorld(
-          obj.x + pt.x,
-          obj.y + pt.y,
-          mapW,
-          mapH - 8,
-          TILE_W,
-          TILE_H,
-          PPU
-        );
-        return vec2(w.x, w.y - TILE_H);
-      });
-      pts = cleanAndInflatePolygon(pts, 0.002);
-      colliders.push({ id: obj.id, name: obj.name, pts });
-    }
+ // ──────────────────────────────────────────────
+// COLLISION POLYGONS
+// ──────────────────────────────────────────────
+const colliders = [];
+for (const layer of objectLayers) {
+  if (layer.name !== 'Collision') continue;
+  for (const obj of layer.objects || []) {
+    if (!obj.polygon) continue;
+    let pts = obj.polygon.map(pt => {
+      const w = tmxPxToWorld(
+        obj.x + pt.x,
+        obj.y + pt.y,
+        mapW,
+        mapH,
+        TILE_W,
+        TILE_H,
+        PPU,
+        true // ✅ match tile centering
+      );
+      // ✅ shift down slightly so polygon base matches tile base
+      return vec2(w.x, w.y - TILE_H / 2);
+    });
+    pts = cleanAndInflatePolygon(pts, 0.002);
+    colliders.push({ id: obj.id, name: obj.name, pts });
   }
-
+}
   return {
     mapData,
     rawImages,
