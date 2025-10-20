@@ -5,12 +5,12 @@ import {
 } from 'littlejsengine';
 
 /*
-  PlayerController — self-contained animation generator + map collider support
-  ---------------------------------------------------------------------------
-  ✅ Procedurally generates frame rects/durations
-  ✅ Supports 8 directions
-  ✅ Uses map.colliders as solid boundaries (point-in-polygon feet test)
-  ✅ Draws a blue debug rect showing the current feet position
+  PlayerController — LittleMan (PixelOver export)
+  -----------------------------------------------
+  ✅ Reads 394×504 / 394×502 sprites
+  ✅ 75 idle frames (9×9 grid), 31 walk frames (6×6 grid)
+  ✅ Auto-scales to match old ~256×256 world height
+  ✅ Same 8-direction logic and collider tests
 */
 
 export class PlayerController {
@@ -31,22 +31,26 @@ export class PlayerController {
     this.textureConfig = textureConfig;
     this.currentAnimKey = '';
 
-    this.mapColliders = []; // populated externally
-    this.feetOffset = vec2(0, 0.45); // where the feet are relative to pos
+    this.mapColliders = [];
+    this.feetOffset = vec2(0, 0.45);
   }
 
   setColliders(colliders) { this.mapColliders = colliders || []; }
 
   async loadAllAnimations() {
     const dirs = Array.from({ length: 8 }, (_, i) => i + 1);
-    const idleMeta = { cols: 5, rows: 5, frameW: 256, frameH: 256, total: 22, duration: 1 / 12 };
-    const walkMeta = { cols: 4, rows: 3, frameW: 256, frameH: 256, total: 12, duration: 1 / 12 };
+
+    // pixelover LittleMan frame meta
+    const idleMeta = { cols: 9, rows: 9, frameW: 394, frameH: 504, total: 75, duration: 1 / 30 };
+    const walkMeta = { cols: 6, rows: 6, frameW: 394, frameH: 502, total: 31, duration: 1 / 30 };
+
     for (const d of dirs) {
       this.frames[`idle_${d}`] = this.generateFrames(idleMeta);
       this.frames[`walk_${d}`] = this.generateFrames(walkMeta);
       this.durations[`idle_${d}`] = Array(idleMeta.total).fill(idleMeta.duration);
       this.durations[`walk_${d}`] = Array(walkMeta.total).fill(walkMeta.duration);
     }
+
     this.ready = true;
   }
 
@@ -82,22 +86,12 @@ export class PlayerController {
         const step = isoMove.scale(this.speed / mag);
         const nextPos = this.pos.add(step);
         const feet = nextPos.add(this.feetOffset);
-
-        // ─────────────── Collision Boundary Check ───────────────
-        if (!this.pointInsideAnyCollider(feet)) {
-          this.pos = nextPos;
-          this.vel = step;
-        } else {
-          // rollback / block movement
-          this.vel.set(0, 0);
-        }
-
+        if (!this.pointInsideAnyCollider(feet)) this.pos = nextPos;
+        else this.vel.set(0, 0);
         const angle = Math.atan2(-move.y, move.x);
         newDir = this.angleToDir(angle);
       }
-    } else {
-      this.vel.set(0, 0);
-    }
+    } else this.vel.set(0, 0);
 
     setCameraPos(this.pos);
 
@@ -115,18 +109,16 @@ export class PlayerController {
     if (!frames.length) return;
 
     this.frameTimer += timeDelta;
-    const currentDur = durations[this.frameIndex] || (1 / 12);
+    const currentDur = durations[this.frameIndex] || (1 / 30);
     if (this.frameTimer >= currentDur) {
       this.frameTimer -= currentDur;
       this.frameIndex = (this.frameIndex + 1) % frames.length;
     }
   }
 
-  /** Point-in-polygon test (odd–even rule) */
-  pointInsideAnyCollider(point) {
-    for (const collider of this.mapColliders) {
-      if (this.pointInPolygon(point, collider.pts)) return true;
-    }
+  pointInsideAnyCollider(p) {
+    for (const c of this.mapColliders)
+      if (this.pointInPolygon(p, c.pts)) return true;
     return false;
   }
 
@@ -159,11 +151,17 @@ export class PlayerController {
     const f = frames[this.frameIndex];
     const texIndex = this.currentTextureIndex();
     const tile = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), texIndex);
-    const frameSize = vec2(f.w / 128, f.h / 128);
+
+    // Scale ~256/504 to maintain old physical height
+    const scaleFactor = 256 / 504;
+    const frameSize = vec2(
+      (f.w / this.ppu) * scaleFactor,
+      (f.h / this.ppu) * scaleFactor
+    );
+
     drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
 
-    // ─────────────── Feet Debug Rect ───────────────
-    const feet = this.pos.add(this.feetOffset);
+    const feet = this.pos.add(this.feetOffset.scale(scaleFactor));
     drawRect(feet, vec2(0.08, 0.04), new Color(0, 0.6, 1, 0.8));
   }
 

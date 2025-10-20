@@ -13,7 +13,7 @@ export let cachedPlayer = null;
 export async function preloadGameAssets() {
   if (cachedMap && cachedPlayer) return;
 
-  console.log('Preloading map and player...');
+  console.log('Preloading map and Little Man...');
   const [map] = await Promise.all([loadTiledMap(MAP_PATH, PPU)]);
 
   const player = new PlayerController(vec2(8, -6), {
@@ -22,7 +22,6 @@ export async function preloadGameAssets() {
   }, PPU);
   await player.loadAllAnimations();
 
-  // Attach collision polygons from the map
   if (map.colliders && map.colliders.length) {
     player.setColliders(map.colliders);
     console.log(`Loaded ${map.colliders.length} map colliders`);

@@ -10,32 +10,34 @@ setShowSplashScreen(false);
 setTileFixBleedScale(0.5);
 
 // ──────────────────────────────────────────────
-// 1️⃣ BUSINESSMAN (player)
+// 1️⃣ LITTLE MAN (player)
 // ──────────────────────────────────────────────
 const playerTextures = [
-  '/assets/character/Idle/Businessman_Idle_dir1.png',
-  '/assets/character/Idle/Businessman_Idle_dir2.png',
-  '/assets/character/Idle/Businessman_Idle_dir3.png',
-  '/assets/character/Idle/Businessman_Idle_dir4.png',
-  '/assets/character/Idle/Businessman_Idle_dir5.png',
-  '/assets/character/Idle/Businessman_Idle_dir6.png',
-  '/assets/character/Idle/Businessman_Idle_dir7.png',
-  '/assets/character/Idle/Businessman_Idle_dir8.png',
-  '/assets/character/Walk/Businessman_Walk_dir1.png',
-  '/assets/character/Walk/Businessman_Walk_dir2.png',
-  '/assets/character/Walk/Businessman_Walk_dir3.png',
-  '/assets/character/Walk/Businessman_Walk_dir4.png',
-  '/assets/character/Walk/Businessman_Walk_dir5.png',
-  '/assets/character/Walk/Businessman_Walk_dir6.png',
-  '/assets/character/Walk/Businessman_Walk_dir7.png',
-  '/assets/character/Walk/Businessman_Walk_dir8.png',
+  // Idle (8 directions)
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir1.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir2.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir3.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir4.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir5.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir6.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir7.png',
+  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir8.png',
+
+  // Walk (8 directions)
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir1.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir2.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir3.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir4.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir5.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir6.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir7.png',
+  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir8.png',
 ];
 
 // ──────────────────────────────────────────────
 // 2️⃣ BOXER (melee character)
 // ──────────────────────────────────────────────
 const boxerTextures = [
-  // Idle1 (used for standing still)
   '/assets/melee-character/Idle1/Boxer__Idle1_dir1.png',
   '/assets/melee-character/Idle1/Boxer__Idle1_dir2.png',
   '/assets/melee-character/Idle1/Boxer__Idle1_dir3.png',
@@ -45,7 +47,6 @@ const boxerTextures = [
   '/assets/melee-character/Idle1/Boxer__Idle1_dir7.png',
   '/assets/melee-character/Idle1/Boxer__Idle1_dir8.png',
 
-  // WalkFoward (used for moving)
   '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir1.png',
   '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir2.png',
   '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir3.png',
@@ -61,6 +62,7 @@ const boxerTextures = [
 // ──────────────────────────────────────────────
 const mapTextures = ['/assets/map/sample-iso.png'];
 
+// Combined preload list
 const preloadImages = [
   ...playerTextures,
   ...boxerTextures,
@@ -87,4 +89,4 @@ function gameRenderPost() { sceneManager.renderPost(); }
 
 // Export texture index bases
 export const PLAYER_TEXTURE_BASE = 0;
-export const BOXER_TEXTURE_BASE = playerTextures.length; // Boxer starts after player
+export const BOXER_TEXTURE_BASE = playerTextures.length;
