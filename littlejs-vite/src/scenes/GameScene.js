@@ -66,7 +66,7 @@ export class GameScene {
     // Load RPG dialog font
     console.log('[GameScene] Loading dialog font...');
     await this.dialog.loadFont();
-    this.dialog.setText('Got a letter last week. No return address. Just three words:');
+    this.dialog.setText('I received a letter last week. No return address. Just three words:');
     console.log('[GameScene] Dialog font ready');
 
     // Load and play music

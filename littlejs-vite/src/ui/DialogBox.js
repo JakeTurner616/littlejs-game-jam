@@ -16,10 +16,7 @@ export class DialogBox {
     const img = new Image();
     img.src = TextTheme.fontPath;
     await img.decode();
-
     overlayContext.imageSmoothingEnabled = false;
-
-    // Base font tile size
     this.font = new FontImage(img, vec2(48, 48), vec2(-30, 0), overlayContext);
   }
 
@@ -34,61 +31,95 @@ export class DialogBox {
       this.typeProgress += dt * this.typingSpeed;
   }
 
+  wrapText(ctx, text, maxCharsPerLine) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+
+    for (const word of words) {
+      const testLine = line ? `${line} ${word}` : word;
+      if (testLine.length > maxCharsPerLine) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
   draw() {
     if (!this.visible || !this.font) return;
-
     const shownText = this.text.substring(0, Math.floor(this.typeProgress));
 
-    const padding = 40;
-    const boxW = mainCanvasSize.x - padding * 2;
-    const boxH = 120;
-    const boxX = padding + boxW / 2;
-    const boxY = mainCanvasSize.y - boxH - 50 + boxH / 2;
+    const uiScale = window.devicePixelRatio || 1;
+    const canvasW = mainCanvasSize.x * uiScale;
+    const canvasH = mainCanvasSize.y * uiScale;
+    const screenFactor = Math.min(1, Math.max(0.7, canvasH / 800));
 
-    // Draw dialog box
+    // ──────────────────────────────────────────────
+    // TEXT METRICS
+    // ──────────────────────────────────────────────
+    const charSpacing = 18 * uiScale * screenFactor;
+    const lineSpacing = 52 * uiScale * screenFactor;
+    const scale = 1.3 * uiScale * screenFactor;
+    const paddingX = 50 * uiScale * screenFactor;
+    const paddingY = 40 * uiScale * screenFactor;
+
+    const maxCharsPerLine = Math.floor((canvasW - paddingX * 2) / (charSpacing * scale));
+    const lines = this.wrapText(overlayContext, shownText, maxCharsPerLine);
+
+    // Dynamic box height based on # of lines
+    const boxH = paddingY * 2 + lines.length * lineSpacing;
+    const boxW = canvasW - paddingX * 0.8;
+    const boxX = (canvasW - boxW) / 2;
+    const boxY = canvasH - boxH - paddingY;
+
+    // ──────────────────────────────────────────────
+    // DRAW BOX
+    // ──────────────────────────────────────────────
     overlayContext.save();
     overlayContext.fillStyle = TextTheme.boxColor.toString();
-    overlayContext.fillRect(padding, mainCanvasSize.y - boxH - 50, boxW, boxH);
+    overlayContext.fillRect(boxX, boxY, boxW, boxH);
     overlayContext.strokeStyle = TextTheme.borderColor.toString();
-    overlayContext.lineWidth = 3;
-    overlayContext.strokeRect(padding - 2, mainCanvasSize.y - boxH - 52, boxW + 4, boxH + 4);
+    overlayContext.lineWidth = 3 * uiScale * screenFactor;
+    overlayContext.strokeRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4);
     overlayContext.restore();
 
     // ──────────────────────────────────────────────
-    // Draw text with squished horizontal spacing
+    // DRAW TEXT
     // ──────────────────────────────────────────────
     const tileW = 48;
     const tileH = 48;
     const cols = this.font.image.width / tileW;
-    const scaleY = 1.0;
-    const scaleX = 1;   // horizontal squish factor
-    const spacing = 16;    // horizontal spacing between letters
-    const overallScale = 1.6;
 
-    const totalW = shownText.length * spacing * scaleX * overallScale;
-    const startX = boxX - totalW / 2;
-    const startY = boxY;
+    for (let l = 0; l < lines.length; l++) {
+      const line = lines[l];
+      const totalW = line.length * charSpacing * scale;
+      const startX = boxX + (boxW - totalW) / 2;
+      const baseY = boxY + paddingY + l * lineSpacing + tileH * 0.25 * scale;
 
-    for (let i = 0; i < shownText.length; i++) {
-      const code = shownText.charCodeAt(i);
-      if (code < 32 || code > 126) continue;
+      for (let i = 0; i < line.length; i++) {
+        const code = line.charCodeAt(i);
+        if (code < 32 || code > 126) continue;
+        const index = code - 32;
+        const sx = (index % cols) * tileW;
+        const sy = Math.floor(index / cols) * tileH;
+        const dx = startX + i * charSpacing * scale;
+        const dy = baseY;
 
-      const index = code - 32;
-      const sx = (index % cols) * tileW;
-      const sy = Math.floor(index / cols) * tileH;
-      const dx = startX + i * spacing * overallScale;
-      const dy = startY;
-
-      overlayContext.save();
-      overlayContext.translate(dx, dy);
-      overlayContext.scale(scaleX * overallScale, scaleY * overallScale);
-      overlayContext.drawImage(
-        this.font.image,
-        sx, sy, tileW, tileH,
-        -tileW / 2, -tileH / 2,
-        tileW, tileH
-      );
-      overlayContext.restore();
+        overlayContext.save();
+        overlayContext.translate(dx, dy);
+        overlayContext.scale(scale, scale);
+        overlayContext.drawImage(
+          this.font.image,
+          sx, sy, tileW, tileH,
+          -tileW / 2, -tileH / 2,
+          tileW, tileH
+        );
+        overlayContext.restore();
+      }
     }
   }
 }
