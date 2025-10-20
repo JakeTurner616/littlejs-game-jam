@@ -519,7 +519,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":true,
+         "visible":false,
          "x":0,
          "y":0
         }, 
@@ -559,6 +559,11 @@
                          "name":"tile_r",
                          "type":"int",
                          "value":8
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"",
@@ -602,6 +607,11 @@
                          "name":"tile_r",
                          "type":"int",
                          "value":7
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"",
@@ -616,8 +626,8 @@
                  "name":"",
                  "polygon":[
                         {
-                         "x":18.9999999999999,
-                         "y":39.6666666666667
+                         "x":7.99999999999989,
+                         "y":37.3333333333334
                         }, 
                         {
                          "x":57,
@@ -628,16 +638,16 @@
                          "y":92
                         }, 
                         {
-                         "x":132.5,
-                         "y":45.5
+                         "x":110.166666666667,
+                         "y":-21.5
                         }, 
                         {
-                         "x":99.7231958985294,
-                         "y":47.3937125321053
+                         "x":-36.6101374348038,
+                         "y":-60.2729541345614
                         }, 
                         {
-                         "x":76.9812065679345,
-                         "y":51.3661552485469
+                         "x":-46.352126765399,
+                         "y":-18.6338447514531
                         }],
                  "properties":[
                         {
@@ -649,6 +659,11 @@
                          "name":"tile_r",
                          "type":"int",
                          "value":5
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"",
@@ -700,6 +715,11 @@
                          "name":"tile_r",
                          "type":"int",
                          "value":5
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"",
@@ -743,6 +763,11 @@
                          "name":"tile_r",
                          "type":"int",
                          "value":6
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"",
@@ -750,6 +775,62 @@
                  "width":0,
                  "x":210.5,
                  "y":801.5
+                }, 
+                {
+                 "height":0,
+                 "id":79,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":45.5,
+                         "y":122.5
+                        }, 
+                        {
+                         "x":57.1986,
+                         "y":105.185
+                        }, 
+                        {
+                         "x":90.5,
+                         "y":47.5
+                        }, 
+                        {
+                         "x":161.401,
+                         "y":27.9837
+                        }, 
+                        {
+                         "x":146.131,
+                         "y":0.0453786
+                        }, 
+                        {
+                         "x":42.8276,
+                         "y":0.484244
+                        }, 
+                        {
+                         "x":37.6832,
+                         "y":120.148
+                        }],
+                 "properties":[
+                        {
+                         "name":"tile_c",
+                         "type":"int",
+                         "value":3
+                        }, 
+                        {
+                         "name":"tile_r",
+                         "type":"int",
+                         "value":5
+                        }, 
+                        {
+                         "name":"y_offset",
+                         "type":"int",
+                         "value":-78
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":196.333333333333,
+                 "y":493
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -758,7 +839,7 @@
          "y":0
         }],
  "nextlayerid":27,
- "nextobjectid":79,
+ "nextobjectid":80,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
