@@ -33,48 +33,53 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   console.log('[MapLoader] Object Layers:', objectLayers.map(l => l.name));
 
   // ──────────────────────────────────────────────
-  // FLOOR OFFSET LAYER DETECTION (Match Tiled semantics)
+  // FLOOR & WALL OFFSETS (use actual layer.offsety, invert for LittleJS)
   // ──────────────────────────────────────────────
-  const FLOOR_STEP_PX = 78;
   const floorOffsets = new Map();
+  const wallOffsets = new Map();
 
   for (const layer of layers) {
-    const match = layer.name.match(/^FloorOffset(\d+)$/i);
-    if (match) {
-      const index = parseInt(match[1]);
-      // emulate Tiled’s behavior: higher floors have *negative* offsetY (up)
-      const offsetWorld = -(FLOOR_STEP_PX * (index + 1)) / PPU;
-      floorOffsets.set(layer.name, offsetWorld);
-      console.log(`[MapLoader] Found ${layer.name} → offset ${offsetWorld.toFixed(3)} world units (matches Tiled -Y = up)`);
+    const name = layer.name.trim();
+    const offY_px = layer.offsety ?? 0;
+    // Tiled negative = upward (screen space down), but LittleJS Y is upward
+    // → flip sign
+    const worldOffset = offY_px / PPU;
+
+    if (/^FloorOffset/i.test(name)) {
+      floorOffsets.set(name, worldOffset);
+      console.log(`[MapLoader] ${name} offsetY=${offY_px}px → ${worldOffset.toFixed(3)} world`);
+    } else if (/^WallOffset/i.test(name)) {
+      wallOffsets.set(name, worldOffset);
+      console.log(`[MapLoader] ${name} offsetY=${offY_px}px → ${worldOffset.toFixed(3)} world`);
     }
   }
 
- // ──────────────────────────────────────────────
-// COLLISION POLYGONS
-// ──────────────────────────────────────────────
-const colliders = [];
-for (const layer of objectLayers) {
-  if (layer.name !== 'Collision') continue;
-  for (const obj of layer.objects || []) {
-    if (!obj.polygon) continue;
-    let pts = obj.polygon.map(pt => {
-      const w = tmxPxToWorld(
-        obj.x + pt.x,
-        obj.y + pt.y,
-        mapW,
-        mapH,
-        TILE_W,
-        TILE_H,
-        PPU,
-        true // ✅ match tile centering
-      );
-      // ✅ shift down slightly so polygon base matches tile base
-      return vec2(w.x, w.y - TILE_H / 2);
-    });
-    pts = cleanAndInflatePolygon(pts, 0.002);
-    colliders.push({ id: obj.id, name: obj.name, pts });
+  // ──────────────────────────────────────────────
+  // COLLISION POLYGONS
+  // ──────────────────────────────────────────────
+  const colliders = [];
+  for (const layer of objectLayers) {
+    if (layer.name !== 'Collision') continue;
+    for (const obj of layer.objects || []) {
+      if (!obj.polygon) continue;
+      let pts = obj.polygon.map(pt => {
+        const w = tmxPxToWorld(
+          obj.x + pt.x,
+          obj.y + pt.y,
+          mapW,
+          mapH,
+          TILE_W,
+          TILE_H,
+          PPU,
+          true
+        );
+        return vec2(w.x, w.y - TILE_H / 2);
+      });
+      pts = cleanAndInflatePolygon(pts, 0.002);
+      colliders.push({ id: obj.id, name: obj.name, pts });
+    }
   }
-}
+
   return {
     mapData,
     rawImages,
@@ -85,6 +90,7 @@ for (const layer of objectLayers) {
     TILE_W,
     TILE_H,
     floorOffsets,
+    wallOffsets,
   };
 }
 

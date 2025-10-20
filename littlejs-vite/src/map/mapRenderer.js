@@ -144,7 +144,7 @@ export function renderMap(
   entities = []
 ) {
   if (!map.mapData) return;
-  const { mapData, rawImages, tileInfos, layers, TILE_W, TILE_H } = map;
+  const { mapData, rawImages, tileInfos, layers, TILE_W, TILE_H, floorOffsets, wallOffsets } = map;
   const { width, height } = mapData;
 
   // clear background
@@ -152,8 +152,6 @@ export function renderMap(
 
   const playerFeet = playerPos.add(playerFeetOffset);
   const wallPolygons = parseWallPolygons(map, PPU);
-//if (DEBUG_MAP_ENABLED)
-  //console.log('[DepthPolygons]', wallPolygons.length, wallPolygons);
 
   const opaqueTiles = [];
   const transparentTiles = [];
@@ -161,15 +159,23 @@ export function renderMap(
   for (const layer of layers) {
     if (!layer.visible || layer.type !== 'tilelayer') continue;
     const { data, name: layerName } = layer;
-    const floorOffsetWorld = map.floorOffsets?.get(layerName) || 0;
+
+    // 🔹 Determine correct world offset for this layer
+    const floorOffsetWorld =
+      floorOffsets?.get(layerName) ??
+      wallOffsets?.get(layerName) ??
+      0; // default to 0 if none
 
     for (let r = 0; r < height; r++) {
       for (let c = 0; c < width; c++) {
         const gid = data[r * width + c];
         if (!gid) continue;
 
-        const worldPos = isoToWorld(c, r, width, height, TILE_W, TILE_H)
-          .subtract(vec2(0, floorOffsetWorld));
+        // Base tile world position
+        let worldPos = isoToWorld(c, r, width, height, TILE_W, TILE_H);
+
+        // Apply vertical offset (Tiled negative → upward → subtract)
+        worldPos = worldPos.subtract(vec2(0, floorOffsetWorld));
 
         const info = tileInfos[gid];
         const img = rawImages[gid];
@@ -181,11 +187,9 @@ export function renderMap(
         const wallPoly = wallPolygons.find(p => p.c === c && p.r === r);
         const tileKey = `${layerName}:${r},${c}`;
 
-        // Track fade state
+        // ─────── Fade logic (unchanged) ───────
         let currentAlpha = fadeAlphaMap.get(tileKey) ?? 1.0;
         let targetAlpha = 1.0;
-
-        // Apply DepthPolygon fade
         if (wallPoly) {
           const polyY = getPolygonDepthYAtX(playerFeet, wallPoly.worldPoly);
           if (polyY !== null) {
@@ -194,8 +198,6 @@ export function renderMap(
             const pixelOverlap = pixelOverlapCheck(
               playerFeet, tileWorldPos, img, imgW_world, imgH_world, PPU, TILE_H
             );
-
-            // Fade if player is behind wall polygon
             if (pixelOverlap && dist > 0) {
               const fadeRange = 0.4;
               const fadeMin = 0.35;
@@ -203,12 +205,11 @@ export function renderMap(
             }
           }
         }
-
-        // Smooth fade interpolation
         const fadeSpeed = 0.15;
         currentAlpha += (targetAlpha - currentAlpha) * fadeSpeed;
         fadeAlphaMap.set(tileKey, currentAlpha);
 
+        // ─────── Tile draw object ───────
         const tileDrawable = {
           y: worldPos.y - anchorOffsetY,
           alpha: currentAlpha,
@@ -222,8 +223,6 @@ export function renderMap(
               0,
               false
             );
-
-            // Debug overlay
             if (DEBUG_MAP_ENABLED && wallPoly)
               drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX);
           },
@@ -237,22 +236,14 @@ export function renderMap(
     }
   }
 
-  // Draw in proper order
+  // Render order
   for (const t of opaqueTiles) t.draw();
   const depthSorted = [...transparentTiles, ...entities];
   depthSorted.sort((a, b) => a.y - b.y);
   for (const d of depthSorted) d.draw();
 
-  // Debug layer
+  // Debug overlay
   if (DEBUG_MAP_ENABLED)
     renderMapDebug(map, playerPos, playerFeetOffset, PPU, true);
-  if (DEBUG_MAP_ENABLED && wallPolygons?.length) {
-  for (const wallPoly of wallPolygons) {
-    const pts = wallPoly.worldPoly;
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
-      drawLine(a, b, 0.03, new Color(1, 0.8, 0.1, 0.9));
-    }
-  }
 }
-}
+
