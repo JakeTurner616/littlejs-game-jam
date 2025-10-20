@@ -8,8 +8,10 @@ export class DialogBox {
     this.font = null;
     this.text = '';
     this.visible = true;
-    this.typingSpeed = 20;
+    this.typingSpeed = 14;
     this.typeProgress = 0;
+    this.pauseTimer = 0;       // ⏸️ pause countdown
+    this.pauseDuration = 0.7;  // pause length after "."
   }
 
   async loadFont() {
@@ -23,12 +25,32 @@ export class DialogBox {
   setText(text) {
     this.text = text;
     this.typeProgress = 0;
+    this.pauseTimer = 0;
   }
 
   update(dt) {
     if (!this.visible || !this.text) return;
-    if (this.typeProgress < this.text.length)
+
+    // Handle active pause
+    if (this.pauseTimer > 0) {
+      this.pauseTimer -= dt;
+      return;
+    }
+
+    const prevIndex = Math.floor(this.typeProgress);
+    if (prevIndex < this.text.length) {
+      // Advance typing
       this.typeProgress += dt * this.typingSpeed;
+
+      const currentIndex = Math.floor(this.typeProgress);
+      // If we just finished typing a ".", pause next frame
+      if (currentIndex > prevIndex) {
+        const lastChar = this.text[prevIndex];
+        if (lastChar === '.') {
+          this.pauseTimer = this.pauseDuration;
+        }
+      }
+    }
   }
 
   wrapText(ctx, text, maxCharsPerLine) {

@@ -7,7 +7,6 @@ import {
   keyWasPressed,
   drawText,
   hsl,
-  timeDelta,
 } from 'littlejsengine';
 
 import { loadTiledMap } from '../map/mapLoader.js';
@@ -24,106 +23,131 @@ export class GameScene {
     this.entities = [];
     this.dialog = new DialogBox();
 
-    setDebugMapEnabled(true);
+    // Timing + Prologue
+    this.musicTimer = 0;
+    this.prologueStarted = false;
+    this.prologuePhase = 0;
+    this.unskippable = true;
+    this.dialogStartDelay = 17;
+
+    this.wordSchedule = [
+      { t: 23, word: 'Come.' },
+      { t: 24, word: 'Home.' },
+      { t: 25, word: 'Now.' },
+    ];
+    this.nextWordIndex = 0;
+    this.dialogStarted = false;
+    this.dialogJustStarted = false;
   }
 
-  /*───────────────────────────────────────────────
-   INITIALIZATION (ASYNC)
-  ────────────────────────────────────────────────*/
   async onEnter() {
     console.log('[GameScene] Entered Game Scene');
-
     const PPU = 128;
     const MAP_PATH = '/assets/map/sample-iso.tmj';
 
-    try {
-      console.log('[GameScene] Loading map...');
-      this.map = await loadTiledMap(MAP_PATH, PPU);
-      console.log('[GameScene] Map loaded successfully');
-    } catch (err) {
-      console.error('[GameScene] Failed to load map:', err);
-      return;
-    }
+    // Load map & player
+    this.map = await loadTiledMap(MAP_PATH, PPU);
+    this.player = new PlayerController(vec2(0, 0), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
+    this.player.setColliders(this.map.colliders);
+    await this.player.loadAllAnimations();
 
-    try {
-      console.log('[GameScene] Creating player...');
-      this.player = new PlayerController(vec2(0, 0), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
-      this.player.setColliders(this.map.colliders);
-      await this.player.loadAllAnimations();
-      console.log('[GameScene] Player loaded and ready:', this.player.ready);
-    } catch (err) {
-      console.error('[GameScene] Failed to create or load player:', err);
-      return;
-    }
-
-    // Register player entity
     this.entities = [this.player];
-
-    // Camera setup
     setCameraScale(PPU);
     setCameraPos(this.player.pos);
 
-    // Load RPG dialog font
-    console.log('[GameScene] Loading dialog font...');
     await this.dialog.loadFont();
-    this.dialog.setText('I received a letter last week. No return address. Just three words:');
-    console.log('[GameScene] Dialog font ready');
+    this.dialog.visible = false;
 
-    // Load and play music
-    console.log('[GameScene] Starting background music...');
-    audioManager.playMusic('/assets/audio/prologue.ogg', 0.6, true, true); // streaming mode`
+    // Play music (streamed)
+    audioManager.playMusic('/assets/audio/prologue.ogg', 0.6, true);
 
-    // ✅ Scene ready
+    // Init state
+    this.musicTimer = 0;
+    this.prologueStarted = true;
+    this.unskippable = true;
+    this.prologuePhase = 0;
+    this.dialogStarted = false;
+
     this.ready = true;
-    console.log('[GameScene] Scene ready → map, player, and audio initialized');
   }
 
-  /*───────────────────────────────────────────────
-   UPDATE
-  ────────────────────────────────────────────────*/
-  update() {
-    if (!this.ready) return;
+  isLoaded() {
+    return this.ready && this.player && this.map && this.player.ready;
+  }
 
-    if (!this.player?.ready) {
-      console.warn('[GameScene] Player not ready yet, skipping update');
-      return;
+  update() {
+    if (!this.isLoaded()) return;
+    this.player.update();
+
+    // Use *real* music playback time
+    if (this.prologueStarted) {
+      this.musicTimer = audioManager.getMusicTime();
+
+      // 1️⃣ Trigger intro dialog
+      if (!this.dialogStarted && this.musicTimer >= this.dialogStartDelay) {
+        this.dialogStarted = true;
+        this.dialogJustStarted = true;
+        console.log('[GameScene] Dialog trigger reached at', this.musicTimer.toFixed(2));
+      }
+
+      // 2️⃣ Start dialog text one frame later
+      if (this.dialogJustStarted) {
+        this.dialogJustStarted = false;
+        this.dialog.visible = true;
+        this.dialog.setText('I received a letter last week. No return address, just three words:');
+        console.log('[GameScene] First sentence typing in');
+      }
+
+      // 3️⃣ Move to buildup after +7s
+      if (this.dialogStarted && this.prologuePhase === 0 &&
+          this.musicTimer >= this.dialogStartDelay + 7) {
+        this.prologuePhase = 1;
+        this.dialog.text = '';
+        this.dialog.typeProgress = 0;
+        this.nextWordIndex = 0;
+        console.log('[GameScene] Buildup started at', this.musicTimer.toFixed(2));
+      }
+
+      // 4️⃣ Stream “Come. Home. Now.”
+      if (this.prologuePhase === 1 && this.nextWordIndex < this.wordSchedule.length) {
+        const next = this.wordSchedule[this.nextWordIndex];
+        if (this.musicTimer >= next.t) {
+          const space = this.dialog.text.length ? ' ' : '';
+          this.dialog.text += space + next.word;
+          console.log('[GameScene] Added word →', next.word);
+          this.nextWordIndex++;
+        }
+      }
+
+      // 5️⃣ End unskippable after 30s
+      if (this.musicTimer >= 30 && this.unskippable) {
+        this.unskippable = false;
+        console.log('[GameScene] Prologue complete — dialog now skippable');
+      }
     }
 
-    this.player.update();
-    this.dialog.update(timeDelta);
+    this.dialog.update(1 / 60); // fixed timestep for text reveal
 
-    // Toggle dialog for testing
-    if (keyWasPressed('Space')) {
+    if (!this.unskippable && keyWasPressed('Space')) {
       this.dialog.visible = !this.dialog.visible;
       if (this.dialog.visible) {
-        console.log('[GameScene] Dialog opened');
         audioManager.playSound('dialog');
         this.dialog.setText('Press SPACE again to hide this text.');
-      } else {
-        console.log('[GameScene] Dialog closed');
       }
     }
   }
 
   updatePost() {
-    if (this.ready && this.player) setCameraPos(this.player.pos);
+    if (this.isLoaded()) setCameraPos(this.player.pos);
   }
 
-  /*───────────────────────────────────────────────
-   RENDER
-  ────────────────────────────────────────────────*/
   render() {
-    if (!this.ready) {
-      drawText('Loading...', vec2(0, 0), 0.5, hsl(0, 0, 1));
+    if (!this.isLoaded()) {
+      const msg = this.map ? 'Loading player...' : 'Loading map...';
+      drawText(msg, vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
       return;
     }
 
-    if (!this.player?.ready || !this.map) {
-      drawText('Loading player...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
-      return;
-    }
-
-    // Render map first
     renderMap(
       this.map,
       this.player.ppu,
@@ -132,13 +156,8 @@ export class GameScene {
       this.player.feetOffset
     );
 
-    // Draw all entities (player included)
-    for (const e of this.entities) {
-      if (e?.draw) e.draw();
-    }
-
-    // Draw dialog box above player
-    this.dialog.draw(this.player.pos.add(vec2(0, -5.5)));
+    for (const e of this.entities) if (e?.draw) e.draw();
+    if (this.dialog.visible) this.dialog.draw();
   }
 
   renderPost() {}
