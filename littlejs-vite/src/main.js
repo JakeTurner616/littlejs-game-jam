@@ -1,13 +1,21 @@
 // src/main.js
 'use strict';
 import {
-  engineInit, setShowSplashScreen, setTileFixBleedScale,
+  engineInit,
+  setShowSplashScreen,
+  setTileFixBleedScale,
+  setSoundVolume,
+  setSoundDefaultRange,
 } from 'littlejsengine';
 import { sceneManager } from './core/sceneManager.js';
 import { TitleScene } from './scenes/TitleScene.js';
 
 setShowSplashScreen(false);
 setTileFixBleedScale(0.5);
+
+// Global sound configuration
+setSoundVolume(0.6);
+setSoundDefaultRange(40);
 
 // ──────────────────────────────────────────────
 // 1️⃣ LITTLE MAN (player)
@@ -81,11 +89,21 @@ engineInit(
   preloadImages
 );
 
-function gameInit() { sceneManager.set(new TitleScene()); }
-function gameUpdate() { sceneManager.update(); }
-function gameUpdatePost() { sceneManager.updatePost(); }
-function gameRender() { sceneManager.render(); }
-function gameRenderPost() { sceneManager.renderPost(); }
+function gameInit() {
+  sceneManager.set(new TitleScene());
+}
+function gameUpdate() {
+  sceneManager.update();
+}
+function gameUpdatePost() {
+  sceneManager.updatePost();
+}
+function gameRender() {
+  sceneManager.render();
+}
+function gameRenderPost() {
+  sceneManager.renderPost();
+}
 
 // Export texture index bases
 export const PLAYER_TEXTURE_BASE = 0;

@@ -13,102 +13,117 @@ import {
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PlayerController } from '../character/playerController.js';
-import { MeleeCharacterController } from '../character/meleeCharacterController.js';
 import { DialogBox } from '../ui/DialogBox.js';
+import { audioManager } from '../audio/AudioManager.js';
 
 export class GameScene {
   constructor(skipInit = false) {
     this.ready = skipInit;
     this.map = null;
     this.player = null;
-    this.enemy = null;
     this.entities = [];
     this.dialog = new DialogBox();
 
     setDebugMapEnabled(true);
   }
 
-  // ──────────────────────────────────────────────
-  // INITIALIZATION (ASYNC)
-  // ──────────────────────────────────────────────
+  /*───────────────────────────────────────────────
+   INITIALIZATION (ASYNC)
+  ────────────────────────────────────────────────*/
   async onEnter() {
-    console.log('Entered Game Scene');
+    console.log('[GameScene] Entered Game Scene');
 
     const PPU = 128;
     const MAP_PATH = '/assets/map/sample-iso.tmj';
 
-    // Load map data (includes objectLayers + colliders)
-    this.map = await loadTiledMap(MAP_PATH, PPU);
+    try {
+      console.log('[GameScene] Loading map...');
+      this.map = await loadTiledMap(MAP_PATH, PPU);
+      console.log('[GameScene] Map loaded successfully');
+    } catch (err) {
+      console.error('[GameScene] Failed to load map:', err);
+      return;
+    }
 
-    // Create player and load animations
-    this.player = new PlayerController(vec2(0, 0), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
-    this.player.setColliders(this.map.colliders);
-    await this.player.loadAllAnimations();
+    try {
+      console.log('[GameScene] Creating player...');
+      this.player = new PlayerController(vec2(0, 0), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
+      this.player.setColliders(this.map.colliders);
+      await this.player.loadAllAnimations();
+      console.log('[GameScene] Player loaded and ready:', this.player.ready);
+    } catch (err) {
+      console.error('[GameScene] Failed to create or load player:', err);
+      return;
+    }
 
-    // Create and prepare test enemy
-    this.enemy = new MeleeCharacterController(vec2(10, -6), PPU);
-    await this.enemy.loadAllAnimations();
-
-    this.entities = [this.player, this.enemy];
+    // Register player entity
+    this.entities = [this.player];
 
     // Camera setup
     setCameraScale(PPU);
     setCameraPos(this.player.pos);
 
     // Load RPG dialog font
+    console.log('[GameScene] Loading dialog font...');
     await this.dialog.loadFont();
-    this.dialog.setText('Welcome home, stranger...');
+    this.dialog.setText('Got a letter last week. No return address. Just three words:');
+    console.log('[GameScene] Dialog font ready');
 
-    // ✅ Scene is now ready for rendering and updating
+    // Load and play music
+    console.log('[GameScene] Starting background music...');
+    audioManager.playMusic('/assets/audio/prologue.ogg', 0.6, true, true); // streaming mode`
+
+    // ✅ Scene ready
     this.ready = true;
+    console.log('[GameScene] Scene ready → map, player, and audio initialized');
   }
 
-  // ──────────────────────────────────────────────
-  // UPDATE
-  // ──────────────────────────────────────────────
+  /*───────────────────────────────────────────────
+   UPDATE
+  ────────────────────────────────────────────────*/
   update() {
-    if (!this.ready || !this.player) return;
+    if (!this.ready) return;
+
+    if (!this.player?.ready) {
+      console.warn('[GameScene] Player not ready yet, skipping update');
+      return;
+    }
 
     this.player.update();
-    this.enemy?.update();
     this.dialog.update(timeDelta);
-
-    // Debug animation cycling
-    if (keyWasPressed('KeyE') || keyWasPressed('KeyQ')) {
-      const dir = keyWasPressed('KeyE') ? 1 : -1;
-      const list = Object.keys(this.enemy.animationMeta);
-      this.debugIndex = (this.debugIndex ?? 0) + dir;
-      if (this.debugIndex < 0) this.debugIndex = list.length - 1;
-      if (this.debugIndex >= list.length) this.debugIndex = 0;
-      this.enemy.state = list[this.debugIndex];
-      this.enemy.frameIndex = 0;
-      this.enemy.frameTimer = 0;
-      console.log(`Enemy animation → ${this.enemy.state}`);
-    }
 
     // Toggle dialog for testing
     if (keyWasPressed('Space')) {
       this.dialog.visible = !this.dialog.visible;
-      if (this.dialog.visible)
+      if (this.dialog.visible) {
+        console.log('[GameScene] Dialog opened');
+        audioManager.playSound('dialog');
         this.dialog.setText('Press SPACE again to hide this text.');
+      } else {
+        console.log('[GameScene] Dialog closed');
+      }
     }
   }
 
   updatePost() {
-    if (!this.ready || !this.player) return;
-    setCameraPos(this.player.pos);
+    if (this.ready && this.player) setCameraPos(this.player.pos);
   }
 
-  // ──────────────────────────────────────────────
-  // RENDER
-  // ──────────────────────────────────────────────
+  /*───────────────────────────────────────────────
+   RENDER
+  ────────────────────────────────────────────────*/
   render() {
-    if (!this.ready || !this.player || !this.map) {
+    if (!this.ready) {
       drawText('Loading...', vec2(0, 0), 0.5, hsl(0, 0, 1));
       return;
     }
 
-    // Render map
+    if (!this.player?.ready || !this.map) {
+      drawText('Loading player...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
+      return;
+    }
+
+    // Render map first
     renderMap(
       this.map,
       this.player.ppu,
@@ -117,23 +132,12 @@ export class GameScene {
       this.player.feetOffset
     );
 
-    // Y-sorted entities
-    const drawables = this.entities
-      .filter(e => e && e.pos && e.draw)
-      .map(e => ({ y: e.pos.y, draw: () => e.draw() }));
+    // Draw all entities (player included)
+    for (const e of this.entities) {
+      if (e?.draw) e.draw();
+    }
 
-    drawables.sort((a, b) => a.y - b.y);
-    for (const d of drawables) d.draw();
-
-    // Debug text for current enemy animation
-    drawText(
-      this.enemy?.state || '',
-      this.enemy?.pos?.add(vec2(0, 2)) || vec2(0, 0),
-      0.3,
-      hsl(0.1, 1, 0.5)
-    );
-
-    // Draw dialog box
+    // Draw dialog box above player
     this.dialog.draw(this.player.pos.add(vec2(0, -5.5)));
   }
 
