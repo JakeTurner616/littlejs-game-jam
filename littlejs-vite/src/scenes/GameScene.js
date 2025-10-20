@@ -7,12 +7,14 @@ import {
   keyWasPressed,
   drawText,
   hsl,
+  timeDelta,
 } from 'littlejsengine';
 
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PlayerController } from '../character/playerController.js';
 import { MeleeCharacterController } from '../character/meleeCharacterController.js';
+import { DialogBox } from '../ui/DialogBox.js';
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -21,8 +23,8 @@ export class GameScene {
     this.player = null;
     this.enemy = null;
     this.entities = [];
+    this.dialog = new DialogBox();
 
-    // Optional debug toggle
     setDebugMapEnabled(true);
   }
 
@@ -41,7 +43,7 @@ export class GameScene {
     // Create player and load animations
     this.player = new PlayerController(vec2(0, 0), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
-    await this.player.loadAllAnimations(); // wait for frames to initialize
+    await this.player.loadAllAnimations();
 
     // Create and prepare test enemy
     this.enemy = new MeleeCharacterController(vec2(10, -6), PPU);
@@ -52,6 +54,10 @@ export class GameScene {
     // Camera setup
     setCameraScale(PPU);
     setCameraPos(this.player.pos);
+
+    // Load RPG dialog font
+    await this.dialog.loadFont();
+    this.dialog.setText('Welcome home, stranger...');
 
     // ✅ Scene is now ready for rendering and updating
     this.ready = true;
@@ -65,6 +71,7 @@ export class GameScene {
 
     this.player.update();
     this.enemy?.update();
+    this.dialog.update(timeDelta);
 
     // Debug animation cycling
     if (keyWasPressed('KeyE') || keyWasPressed('KeyQ')) {
@@ -78,10 +85,16 @@ export class GameScene {
       this.enemy.frameTimer = 0;
       console.log(`Enemy animation → ${this.enemy.state}`);
     }
+
+    // Toggle dialog for testing
+    if (keyWasPressed('Space')) {
+      this.dialog.visible = !this.dialog.visible;
+      if (this.dialog.visible)
+        this.dialog.setText('Press SPACE again to hide this text.');
+    }
   }
 
   updatePost() {
-    // ✅ guard against null player
     if (!this.ready || !this.player) return;
     setCameraPos(this.player.pos);
   }
@@ -90,13 +103,12 @@ export class GameScene {
   // RENDER
   // ──────────────────────────────────────────────
   render() {
-    // ✅ guard against null player/map
     if (!this.ready || !this.player || !this.map) {
       drawText('Loading...', vec2(0, 0), 0.5, hsl(0, 0, 1));
       return;
     }
 
-    // ✅ Render the map (with DepthPolygons fade)
+    // Render map
     renderMap(
       this.map,
       this.player.ppu,
@@ -105,7 +117,7 @@ export class GameScene {
       this.player.feetOffset
     );
 
-    // ✅ Y-sorted entity rendering
+    // Y-sorted entities
     const drawables = this.entities
       .filter(e => e && e.pos && e.draw)
       .map(e => ({ y: e.pos.y, draw: () => e.draw() }));
@@ -120,6 +132,9 @@ export class GameScene {
       0.3,
       hsl(0.1, 1, 0.5)
     );
+
+    // Draw dialog box
+    this.dialog.draw(this.player.pos.add(vec2(0, -5.5)));
   }
 
   renderPost() {}
