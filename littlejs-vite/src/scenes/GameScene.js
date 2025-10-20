@@ -31,9 +31,9 @@ export class GameScene {
     this.dialogStartDelay = 17;
 
     this.wordSchedule = [
-      { t: 23, word: 'Come.' },
-      { t: 24, word: 'Home.' },
-      { t: 25, word: 'Now.' },
+      { t: 22, word: 'Come.' },
+      { t: 23, word: 'Home.' },
+      { t: 24, word: 'Now.' },
     ];
     this.nextWordIndex = 0;
     this.dialogStarted = false;
