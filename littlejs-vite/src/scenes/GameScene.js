@@ -13,6 +13,7 @@ import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
 import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
+import { EventRegistry } from '../map/eventRegistry.js'; // ✅ import this
 
 setDebugMapEnabled(false);
 
@@ -22,7 +23,7 @@ export class GameScene {
     this.map = null;
     this.player = null;
     this.entities = [];
-    this.dialog = new DialogBox();
+    this.dialog = new DialogBox('monologue');
     this.events = null;
   }
 
@@ -32,11 +33,23 @@ export class GameScene {
     this.map = await loadTiledMap(MAP_PATH, PPU);
 
     const PLAYER_SPAWN = vec2(8.92, -12.67);
-    this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
+    this.player = new PlayerController(
+      PLAYER_SPAWN,
+      { idleStartIndex: 0, walkStartIndex: 8 },
+      PPU
+    );
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
 
-    this.events = new PolygonEventSystem(this.map, () => {}, false);
+    // ✅ Wire polygon event system to EventRegistry
+    this.events = new PolygonEventSystem(this.map, (poly) => {
+      if (poly?.eventId && EventRegistry[poly.eventId]) {
+        EventRegistry[poly.eventId].execute(this, this.player);
+      } else {
+        console.warn('[GameScene] No matching event for:', poly?.eventId);
+      }
+    }, false);
+
     this.entities = [this.player];
 
     setCameraScale(PPU);
@@ -44,6 +57,7 @@ export class GameScene {
 
     await this.dialog.loadFont();
     this.dialog.visible = true;
+    this.dialog.setMode('monologue');
     this.dialog.setText('Hello world.');
     this.ready = true;
   }
