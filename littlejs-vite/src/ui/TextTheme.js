@@ -3,8 +3,8 @@
 import { vec2, Color, hsl } from 'littlejsengine';
 
 export const TextTheme = {
-  fontPath: '/assets/font/estonia_48.png',
-  fontSize: 0.05,
+  fontFamily: 'GameFont, Arial, sans-serif',
+  fontSize: 32, // pixel height base
   textColor: hsl(0.13, 1, 0.9),
   boxColor: new Color(0, 0, 0, 0.7),
   borderColor: hsl(0.1, 1, 0.3),
