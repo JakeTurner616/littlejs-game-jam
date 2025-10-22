@@ -13,7 +13,8 @@ import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
 import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
-import { EventRegistry } from '../map/eventRegistry.js'; // ✅ import this
+import { EventRegistry } from '../map/eventRegistry.js';
+import { LightingSystem } from '../environment/lightingSystem.js';
 
 setDebugMapEnabled(false);
 
@@ -25,6 +26,7 @@ export class GameScene {
     this.entities = [];
     this.dialog = new DialogBox('monologue');
     this.events = null;
+    this.lighting = new LightingSystem();
   }
 
   async onEnter() {
@@ -41,24 +43,20 @@ export class GameScene {
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
 
-    // ✅ Wire polygon event system to EventRegistry
     this.events = new PolygonEventSystem(this.map, (poly) => {
-      if (poly?.eventId && EventRegistry[poly.eventId]) {
+      if (poly?.eventId && EventRegistry[poly.eventId])
         EventRegistry[poly.eventId].execute(this, this.player);
-      } else {
-        console.warn('[GameScene] No matching event for:', poly?.eventId);
-      }
-    }, false);
+    });
 
     this.entities = [this.player];
-
     setCameraScale(PPU);
     setCameraPos(this.player.pos);
 
     await this.dialog.loadFont();
-    this.dialog.visible = true;
     this.dialog.setMode('monologue');
     this.dialog.setText('Hello world.');
+    this.dialog.visible = true;
+
     this.ready = true;
   }
 
@@ -68,9 +66,23 @@ export class GameScene {
 
   update() {
     if (!this.isLoaded()) return;
+    const dt = 1 / 60;
+
+    this.lighting.update(dt);
     this.player.update();
     this.events?.update();
-    this.dialog.update(1 / 60);
+    this.dialog.update(dt);
+
+    if (window.triggerLightningOnce) {
+      this.lighting.triggerLightning();
+      window.triggerLightningOnce = false;
+    }
+
+    // 🌧️ Toggle rain effect
+    if (window.toggleRain) {
+  this.lighting.toggleRain();
+  window.toggleRain = false;
+}
   }
 
   updatePost() {
@@ -83,6 +95,10 @@ export class GameScene {
       return;
     }
 
+    // 1️⃣ Base background
+    this.lighting.renderBase();
+
+    // 2️⃣ Map + geometry
     renderMap(
       this.map,
       this.player.ppu,
@@ -91,12 +107,14 @@ export class GameScene {
       this.player.feetOffset
     );
 
-    this.events?.renderHoverOverlay();
-    for (const e of this.entities)
-      e?.draw?.();
+    // 3️⃣ Lightning + rain overlay
+    this.lighting.renderOverlay();
 
-    if (this.dialog.visible)
-      this.dialog.draw();
+    // 4️⃣ Entities + overlays
+    this.events?.renderHoverOverlay();
+    for (const e of this.entities) e?.draw?.();
+
+    if (this.dialog.visible) this.dialog.draw();
   }
 
   renderPost() {}
