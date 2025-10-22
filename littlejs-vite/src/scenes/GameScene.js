@@ -15,6 +15,8 @@ import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { audioManager } from '../audio/AudioManager.js';
 
+setDebugMapEnabled(false);
+
 export class GameScene {
   constructor(skipInit = false) {
     this.ready = skipInit;
