@@ -655,6 +655,51 @@
         }, 
         {
          "draworder":"topdown",
+         "id":28,
+         "name":"EventPolygons",
+         "objects":[
+                {
+                 "height":0,
+                 "id":89,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":-115.25,
+                         "y":-114.75
+                        }, 
+                        {
+                         "x":-49.75,
+                         "y":-114.25
+                        }, 
+                        {
+                         "x":66.25,
+                         "y":1.75
+                        }],
+                 "properties":[
+                        {
+                         "name":"eventId",
+                         "type":"string",
+                         "value":"door_teleport_1"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":925.75,
+                 "y":1278.25
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":20,
          "name":"DepthPolygons",
          "objects":[
@@ -1212,8 +1257,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":28,
- "nextobjectid":89,
+ "nextlayerid":29,
+ "nextobjectid":90,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
