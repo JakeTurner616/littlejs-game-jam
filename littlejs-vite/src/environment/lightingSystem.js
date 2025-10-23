@@ -1,22 +1,21 @@
-// src/environment/lightingSystem.js
 'use strict';
 import { drawRect, vec2, hsl, Color } from 'littlejsengine';
 
 /**
- * LightingSystem — unified rain + lightning manager
+ * LightingSystem — ultra-optimized rain + lightning
  * -------------------------------------------------
- * • Smooth, cinematic rain with persistent particles
- * • Balanced drop size: thinner, more numerous, faster motion
- * • Works in both overlay and background modes
+ * • No splashes, no allocations during update
+ * • Precomputed pooled rain streaks
+ * • Screen culling + lightning overlay
  */
 export class LightingSystem {
   constructor() {
     // Core toggles
-    this.rainEnabled = false;
+    this.rainEnabled = true;            // ✅ rain ON by default
     this.lightningEnabled = false;
 
     // Render modes
-    this.rainRenderMode = 'overlay';
+    this.rainRenderMode = 'overlay';    // ✅ overlay by default
     this.lightningRenderMode = 'overlay';
 
     // Lightning state
@@ -24,32 +23,55 @@ export class LightingSystem {
     this.lightningFlash = 0;
 
     // Rain system
-    this.rainDrops = [];
-    this.rainDensity = 600;  // more drops overall
-    this.rainSpeed = 15;     // faster descent
-    this.windDrift = 1.4;    // subtle sideways drift
-    this.cinematicMode = true;
+    this.poolSize = 400;
+    this.rainDrops = new Array(this.poolSize);
+    this.spawnW = 64;
+    this.spawnH = 40;
+    this.angle = Math.PI / 12;           // slight diagonal
+    this.baseSpeed = 24;
+    this.frameCounter = 0;
+
+    this._initPool();
   }
 
   /*───────────────────────────────────────────────
-    CONFIGURATION
+    CONFIG
   ────────────────────────────────────────────────*/
   setRainMode(mode = 'overlay') { this.rainRenderMode = mode; }
   setLightningMode(mode = 'overlay') { this.lightningRenderMode = mode; }
   toggleRain() { this.rainEnabled = !this.rainEnabled; }
-  toggleCinematic() { this.cinematicMode = !this.cinematicMode; }
-
   triggerLightning() {
     this.lightningEnabled = true;
-    this.lightningTimer = 0.1 + Math.random() * 0.1;
+    this.lightningTimer = 0.12 + Math.random() * 0.08;
     this.lightningFlash = 1;
+  }
+
+  /*───────────────────────────────────────────────
+    INTERNAL INITIALIZATION
+  ────────────────────────────────────────────────*/
+  _initPool() {
+    const sinA = Math.sin(this.angle);
+    const cosA = Math.cos(this.angle);
+    for (let i = 0; i < this.poolSize; i++) {
+      const len = 0.4 + Math.random() * 0.4;
+      const spd = this.baseSpeed * (0.9 + Math.random() * 0.3);
+      const vx = sinA * spd;
+      const vy = -cosA * spd;
+      this.rainDrops[i] = {
+        x: Math.random() * this.spawnW - this.spawnW / 2,
+        y: Math.random() * this.spawnH,
+        vx, vy, len,
+        alpha: 0.35 + Math.random() * 0.25,
+        width: 0.015 + Math.random() * 0.01,
+      };
+    }
   }
 
   /*───────────────────────────────────────────────
     UPDATE
   ────────────────────────────────────────────────*/
   update(dt) {
-    // Lightning timer
+    // Lightning fade
     if (this.lightningEnabled) {
       this.lightningTimer -= dt;
       this.lightningFlash = Math.max(0, this.lightningTimer * 10);
@@ -58,84 +80,62 @@ export class LightingSystem {
         this.lightningFlash = 0;
       }
     }
+    if (!this.rainEnabled) return;
 
-    // Maintain rain system
-    if (this.rainEnabled) {
-      // Maintain density
-      while (this.rainDrops.length < this.rainDensity)
-        this.rainDrops.push(this._spawnDrop());
+    const drops = this.rainDrops;
+    const n = this.poolSize;
+    const spawnW = this.spawnW;
+    const spawnH = this.spawnH;
 
-      const speedScale = this.cinematicMode ? 0.55 : 1.0;
+    for (let i = 0; i < n; i++) {
+      const d = drops[i];
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
 
-      for (const d of this.rainDrops) {
-        d.pos.y -= d.vel.y * dt * speedScale;
-        d.pos.x += d.vel.x * dt * speedScale;
-
-        // Recycle when below screen
-        if (d.pos.y < -25) {
-          d.pos.y = 30 + Math.random() * 10;
-          d.pos.x = Math.random() * 60 - 30;
-        }
+      if (d.y < -25 || d.x > spawnW / 2 || d.x < -spawnW / 2 - 10) {
+        d.x = Math.random() * spawnW - spawnW / 2;
+        d.y = 25 + Math.random() * 10;
       }
-    } else {
-      this.rainDrops.length = 0;
     }
   }
 
   /*───────────────────────────────────────────────
-    RENDER LAYERS
+    RENDER
   ────────────────────────────────────────────────*/
   renderBase() {
     drawRect(vec2(0, 0), vec2(9999, 9999), hsl(0, 0, 0.15));
   }
 
-  renderMidLayer() {
-    // Lightning flash behind map
-    if (this.lightningRenderMode === 'background' && this.lightningEnabled && this.lightningFlash > 0) {
+  renderMidLayer(cameraPos = vec2(0, 0)) {
+    if (this.lightningRenderMode === 'background' && this.lightningFlash > 0)
       drawRect(vec2(0, 0), vec2(9999, 9999),
         new Color(1, 1, 1, this.lightningFlash * 0.35));
-    }
-
-    // Background rain
     if (this.rainRenderMode === 'background' && this.rainEnabled)
-      this._renderRain(true);
+      this._renderRain(cameraPos, true);
   }
 
-  renderOverlay() {
-    // Foreground rain
+  renderOverlay(cameraPos = vec2(0, 0)) {
     if (this.rainRenderMode === 'overlay' && this.rainEnabled)
-      this._renderRain(false);
-
-    // Foreground lightning
-    if (this.lightningRenderMode === 'overlay' && this.lightningEnabled && this.lightningFlash > 0)
+      this._renderRain(cameraPos, false);
+    if (this.lightningRenderMode === 'overlay' && this.lightningFlash > 0)
       this._renderLightning();
   }
 
-  /*───────────────────────────────────────────────
-    INTERNAL RENDER HELPERS
-  ────────────────────────────────────────────────*/
-  _spawnDrop() {
-    // Small, sleek streaks for dense rainfall
-    const baseWidth  = 0.012;  // thin drops (~1.5 px)
-    const baseLength = 0.18;   // shorter streak (~22 px)
-    const speed      = this.rainSpeed * (0.9 + Math.random() * 0.3);
-    const drift      = (Math.random() - 0.5) * this.windDrift;
+  _renderRain(cameraPos, isBackground) {
+    const color = new Color(0.75, 0.85, 1, 1);
+    const brightness = isBackground ? 0.25 : 0.55;
+    const viewHalfW = 32, viewHalfH = 24;
+    const drops = this.rainDrops;
+    const n = this.poolSize;
 
-    return {
-      pos: vec2(Math.random() * 60 - 30, Math.random() * 40),
-      size: vec2(baseWidth, baseLength * (0.8 + Math.random() * 0.4)),
-      vel: vec2(drift, speed),
-      alpha: 0.45 + Math.random() * 0.25,
-    };
-  }
+    for (let i = 0; i < n; i++) {
+      const d = drops[i];
+      const dx = d.x - cameraPos.x;
+      const dy = d.y - cameraPos.y;
+      if (dx < -viewHalfW || dx > viewHalfW || dy < -viewHalfH || dy > viewHalfH) continue;
 
-  _renderRain(isBackground = false) {
-    const color = new Color(0.65, 0.82, 1, 1);
-    const brightness = isBackground ? 0.3 : 0.55;
-
-    for (const d of this.rainDrops) {
       color.a = brightness * d.alpha;
-      drawRect(d.pos, d.size, color);
+      drawRect(vec2(d.x, d.y), vec2(d.width, d.len), color);
     }
   }
 

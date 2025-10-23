@@ -1,7 +1,8 @@
 // src/character/playerController.js
 'use strict';
 import {
-  vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos, drawRect,
+  vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos,
+  drawRect, ParticleEmitter, drawEllipse, clamp
 } from 'littlejsengine';
 
 /*
@@ -10,7 +11,9 @@ import {
   ✅ Reads 394×504 / 394×502 sprites
   ✅ 75 idle frames (9×9 grid), 31 walk frames (6×6 grid)
   ✅ Auto-scales to match old ~256×256 world height
-  ✅ Same 8-direction logic and collider tests
+  ✅ Adds realistic dust-style footstep particles
+  ✅ Adds soft *isometric distorted* shadow under the player
+  ✅ Smoothly animates shadow size transitions on movement
 */
 
 export class PlayerController {
@@ -33,14 +36,21 @@ export class PlayerController {
 
     this.mapColliders = [];
     this.feetOffset = vec2(0, 0.45);
+
+    // Footstep particle system
+    this.footstepTimer = 0;
+    this.footstepInterval = 0.18;
+
+    // Shadow scaling control
+    this.shadowScale = 1.0;           // current scale
+    this.shadowTargetScale = 1.0;     // target scale (changes when moving)
+    this.shadowLerpSpeed = 5.0;       // how fast to interpolate between states
   }
 
   setColliders(colliders) { this.mapColliders = colliders || []; }
 
   async loadAllAnimations() {
     const dirs = Array.from({ length: 8 }, (_, i) => i + 1);
-
-    // pixelover LittleMan frame meta
     const idleMeta = { cols: 9, rows: 9, frameW: 394, frameH: 504, total: 75, duration: 1 / 30 };
     const walkMeta = { cols: 6, rows: 6, frameW: 394, frameH: 502, total: 31, duration: 1 / 30 };
 
@@ -79,6 +89,11 @@ export class PlayerController {
     let newState = isMoving ? 'walk' : 'idle';
     let newDir = this.direction;
 
+    // Smooth shadow growth/shrink logic
+    this.shadowTargetScale = isMoving ? 1.15 : 1.0; // slightly larger while walking
+    const t = clamp(timeDelta * this.shadowLerpSpeed, 0, 1);
+    this.shadowScale += (this.shadowTargetScale - this.shadowScale) * t;
+
     if (isMoving) {
       const isoMove = vec2(move.x, move.y * this.tileRatio);
       const mag = Math.hypot(isoMove.x, isoMove.y);
@@ -86,12 +101,21 @@ export class PlayerController {
         const step = isoMove.scale(this.speed / mag);
         const nextPos = this.pos.add(step);
         const feet = nextPos.add(this.feetOffset);
-        if (!this.pointInsideAnyCollider(feet)) this.pos = nextPos;
-        else this.vel.set(0, 0);
+        if (!this.pointInsideAnyCollider(feet)) {
+          this.pos = nextPos;
+          this.footstepTimer += timeDelta;
+          if (this.footstepTimer >= this.footstepInterval) {
+            this.footstepTimer = 0;
+            this.emitFootstepParticle(move);
+          }
+        } else this.vel.set(0, 0);
         const angle = Math.atan2(-move.y, move.x);
         newDir = this.angleToDir(angle);
       }
-    } else this.vel.set(0, 0);
+    } else {
+      this.vel.set(0, 0);
+      this.footstepTimer = 0;
+    }
 
     setCameraPos(this.pos);
 
@@ -114,6 +138,49 @@ export class PlayerController {
       this.frameTimer -= currentDur;
       this.frameIndex = (this.frameIndex + 1) % frames.length;
     }
+  }
+
+  emitFootstepParticle(moveDir = vec2(0, 0)) {
+    const feetPos = this.pos.add(this.feetOffset);
+    const speed = 0.01 + Math.random() * 0.03;
+    const angle = Math.atan2(-moveDir.y, moveDir.x) + (Math.random() - 0.5) * 0.3;
+    const sidewaysOffset = vec2(Math.sin(angle) * 0.02, -Math.cos(angle) * 0.02);
+    const pos = feetPos.add(sidewaysOffset);
+
+    new ParticleEmitter(
+      pos, angle,
+      0.05, 0, 0, 0.4,
+      undefined,
+      new Color(0.3, 0.25, 0.2, 0.35),
+      new Color(0.4, 0.35, 0.3, 0.25),
+      new Color(0.3, 0.25, 0.2, 0),
+      new Color(0.4, 0.35, 0.3, 0),
+      0.25 + Math.random() * 0.1,
+      0.02, 0.05,
+      speed, 0,
+      0.9, 0.9, 0, 0.4, 0.15,
+      0.2, false, false, true, -1
+    ).emitParticle();
+  }
+
+  /*───────────────────────────────────────────────
+    ISO SHADOW
+  ────────────────────────────────────────────────*/
+  drawShadow() {
+    const shadowPos = this.pos.add(this.feetOffset);
+    const baseRadius = 0.3 * this.shadowScale;
+
+    // Apply isometric distortion
+    const width = baseRadius * 1.8;
+    const height = baseRadius * 0.9;
+
+    const pos = vec2(shadowPos.x, shadowPos.y);
+    const outer = vec2(width * 1.2, height * 1.2);
+    const inner = vec2(width, height);
+
+    // Outer soft gradient and inner core
+    drawEllipse(pos, outer, new Color(0, 0, 0, 0.08), 0);
+    drawEllipse(pos, inner, new Color(0, 0, 0, 0.25), 0);
   }
 
   pointInsideAnyCollider(p) {
@@ -152,17 +219,17 @@ export class PlayerController {
     const texIndex = this.currentTextureIndex();
     const tile = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), texIndex);
 
-    // Scale ~256/504 to maintain old physical height
     const scaleFactor = 256 / 504;
     const frameSize = vec2(
       (f.w / this.ppu) * scaleFactor,
       (f.h / this.ppu) * scaleFactor
     );
 
-    drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
+    // Draw smoothly animated isometric shadow
+    this.drawShadow();
 
-    const feet = this.pos.add(this.feetOffset.scale(scaleFactor));
-    drawRect(feet, vec2(0.08, 0.04), new Color(0, 0.6, 1, 0.8));
+    // Draw sprite
+    drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
   }
 
   setState(s) { this.state = s; }

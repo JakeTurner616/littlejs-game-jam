@@ -65,6 +65,10 @@ const boxerTextures = [
   '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir8.png',
 ];
 
+const portraitTextures = [
+  '/assets/portraits/doorway.png',
+];
+
 // ──────────────────────────────────────────────
 // 3️⃣ MAP TILESET
 // ──────────────────────────────────────────────
@@ -75,6 +79,7 @@ const preloadImages = [
   ...playerTextures,
   ...boxerTextures,
   ...mapTextures,
+  ...portraitTextures,
 ];
 
 // ──────────────────────────────────────────────
