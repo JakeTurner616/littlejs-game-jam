@@ -1,13 +1,8 @@
 // src/scenes/GameScene.js
 'use strict';
 import {
-  vec2,
-  setCameraPos,
-  setCameraScale,
-  drawText,
-  hsl,
+  vec2, setCameraPos, setCameraScale, drawText, hsl
 } from 'littlejsengine';
-
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
@@ -35,11 +30,7 @@ export class GameScene {
     this.map = await loadTiledMap(MAP_PATH, PPU);
 
     const PLAYER_SPAWN = vec2(8.92, -12.67);
-    this.player = new PlayerController(
-      PLAYER_SPAWN,
-      { idleStartIndex: 0, walkStartIndex: 8 },
-      PPU
-    );
+    this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
 
@@ -57,17 +48,18 @@ export class GameScene {
     this.dialog.setText('Hello world.');
     this.dialog.visible = true;
 
+    this.lighting.setRainMode('overlay');
+    this.lighting.setLightningMode('overlay');
+
+    window.scene = this;
     this.ready = true;
   }
 
-  isLoaded() {
-    return this.ready && this.player && this.map && this.player.ready;
-  }
+  isLoaded() { return this.ready && this.player?.ready && this.map; }
 
   update() {
     if (!this.isLoaded()) return;
     const dt = 1 / 60;
-
     this.lighting.update(dt);
     this.player.update();
     this.events?.update();
@@ -77,12 +69,10 @@ export class GameScene {
       this.lighting.triggerLightning();
       window.triggerLightningOnce = false;
     }
-
-    // 🌧️ Toggle rain effect
     if (window.toggleRain) {
-  this.lighting.toggleRain();
-  window.toggleRain = false;
-}
+      this.lighting.toggleRain();
+      window.toggleRain = false;
+    }
   }
 
   updatePost() {
@@ -95,25 +85,13 @@ export class GameScene {
       return;
     }
 
-    // 1️⃣ Base background
     this.lighting.renderBase();
-
-    // 2️⃣ Map + geometry
-    renderMap(
-      this.map,
-      this.player.ppu,
-      this.player.pos,
-      this.player.pos,
-      this.player.feetOffset
-    );
-
-    // 3️⃣ Lightning + rain overlay
+    this.lighting.renderMidLayer();
+    renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
     this.lighting.renderOverlay();
 
-    // 4️⃣ Entities + overlays
     this.events?.renderHoverOverlay();
     for (const e of this.entities) e?.draw?.();
-
     if (this.dialog.visible) this.dialog.draw();
   }
 

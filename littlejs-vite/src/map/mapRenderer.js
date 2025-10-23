@@ -129,8 +129,6 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
   const { mapData, rawImages, tileInfos, layers, TILE_W, TILE_H, floorOffsets, wallOffsets } = map;
   const { width, height } = mapData;
 
-  drawRect(vec2(0, 0), vec2(9999, 9999), hsl(0, 0, 0.15));
-
   const playerFeet = playerPos.add(playerFeetOffset);
   const wallPolygons = parseWallPolygons(map, PPU);
 
