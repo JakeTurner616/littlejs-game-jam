@@ -9,9 +9,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   const mapW = mapData.width;
   const mapH = mapData.height;
 
-  // ──────────────────────────────────────────────
-  // LOAD TILESET IMAGES
-  // ──────────────────────────────────────────────
+  // tileset
   const tilesetDef = mapData.tilesets[0];
   const firstgid = tilesetDef.firstgid || 1;
   const rawImages = {};
@@ -30,31 +28,19 @@ export async function loadTiledMap(MAP_PATH, PPU) {
 
   const layers = mapData.layers.filter(l => l.type === 'tilelayer');
   const objectLayers = mapData.layers.filter(l => l.type === 'objectgroup');
-  console.log('[MapLoader] Object Layers:', objectLayers.map(l => l.name));
 
-  // ──────────────────────────────────────────────
-  // FLOOR & WALL OFFSETS
-  // ──────────────────────────────────────────────
+  // floor/wall offsets
   const floorOffsets = new Map();
   const wallOffsets = new Map();
-
   for (const layer of layers) {
     const name = layer.name.trim();
     const offY_px = layer.offsety ?? 0;
     const worldOffset = offY_px / PPU;
-
-    if (/^FloorOffset/i.test(name)) {
-      floorOffsets.set(name, worldOffset);
-      console.log(`[MapLoader] ${name} offsetY=${offY_px}px → ${worldOffset.toFixed(3)} world`);
-    } else if (/^WallOffset/i.test(name)) {
-      wallOffsets.set(name, worldOffset);
-      console.log(`[MapLoader] ${name} offsetY=${offY_px}px → ${worldOffset.toFixed(3)} world`);
-    }
+    if (/^FloorOffset/i.test(name)) floorOffsets.set(name, worldOffset);
+    else if (/^WallOffset/i.test(name)) wallOffsets.set(name, worldOffset);
   }
 
-  // ──────────────────────────────────────────────
-  // COLLISION POLYGONS
-  // ──────────────────────────────────────────────
+  // colliders
   const colliders = [];
   for (const layer of objectLayers) {
     if (layer.name !== 'Collision') continue;
@@ -62,14 +48,8 @@ export async function loadTiledMap(MAP_PATH, PPU) {
       if (!obj.polygon) continue;
       let pts = obj.polygon.map(pt => {
         const w = tmxPxToWorld(
-          obj.x + pt.x,
-          obj.y + pt.y,
-          mapW,
-          mapH,
-          TILE_W,
-          TILE_H,
-          PPU,
-          true
+          obj.x + pt.x, obj.y + pt.y,
+          mapW, mapH, TILE_W, TILE_H, PPU, true
         );
         return vec2(w.x, w.y - TILE_H / 2);
       });
@@ -78,37 +58,37 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // EVENT POLYGONS (clickable triggers)
-  // ──────────────────────────────────────────────
+  // events
   const eventPolygons = [];
   for (const layer of objectLayers) {
     if (layer.name !== 'EventPolygons') continue;
     for (const obj of layer.objects || []) {
       if (!obj.polygon) continue;
-
       const pts = obj.polygon.map(pt => {
         const w = tmxPxToWorld(
-          obj.x + pt.x,
-          obj.y + pt.y,
-          mapW,
-          mapH,
-          TILE_W,
-          TILE_H,
-          PPU,
-          true
+          obj.x + pt.x, obj.y + pt.y,
+          mapW, mapH, TILE_W, TILE_H, PPU, true
         );
         return vec2(w.x, w.y - TILE_H / 2);
       });
-
-      // Only one property is expected: eventId
       const eventId = obj.properties?.find(p => p.name === 'eventId')?.value || null;
+      eventPolygons.push({ id: obj.id, name: obj.name || `event_${obj.id}`, pts, eventId });
+    }
+  }
 
-      eventPolygons.push({
-        id: obj.id,
-        name: obj.name || `event_${obj.id}`,
-        pts,
-        eventId,
+  // ✅ NEW: object sprites
+  const objectSprites = [];
+  for (const layer of objectLayers) {
+    if (layer.name !== 'ObjectSprites') continue;
+    for (const obj of layer.objects || []) {
+      const spriteProp = obj.properties?.find(p => p.name === 'spriteName');
+      if (!spriteProp?.value) continue;
+      const spriteName = spriteProp.value;
+      objectSprites.push({
+        name: spriteName,
+        x: obj.x,
+        y: obj.y,
+        properties: obj.properties || [],
       });
     }
   }
@@ -121,6 +101,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     objectLayers,
     colliders,
     eventPolygons,
+    objectSprites,   // ✅ added
     TILE_W,
     TILE_H,
     floorOffsets,
@@ -128,9 +109,9 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   };
 }
 
-// ──────────────────────────────────────────────
-// HELPERS
-// ──────────────────────────────────────────────
+/*───────────────────────────────────────────────
+  Helpers
+───────────────────────────────────────────────*/
 function cleanAndInflatePolygon(pts, inflate = 0.002) {
   if (!pts.length) return pts;
   const EPS = 1e-5;

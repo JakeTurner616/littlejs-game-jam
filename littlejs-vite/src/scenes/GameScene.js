@@ -10,6 +10,7 @@ import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { EventRegistry } from '../map/eventRegistry.js';
 import { LightingSystem } from '../environment/lightingSystem.js';
+import { ObjectSystem } from '../map/objectSystem.js';
 
 setDebugMapEnabled(true);
 
@@ -18,6 +19,7 @@ export class GameScene {
     this.ready = skipInit;
     this.map = null;
     this.player = null;
+    this.objects = null;
     this.entities = [];
     this.dialog = new DialogBox('monologue');
     this.events = null;
@@ -33,6 +35,10 @@ export class GameScene {
     this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
+
+    // ✅ Load object sprites
+    this.objects = new ObjectSystem(this.map, PPU);
+    await this.objects.load();
 
     this.events = new PolygonEventSystem(this.map, (poly) => {
       if (poly?.eventId && EventRegistry[poly.eventId])
@@ -65,6 +71,10 @@ export class GameScene {
     this.events?.update();
     this.dialog.update(dt);
 
+    // ✅ update object fade based on player position
+    const playerFeet = this.player.pos.add(this.player.feetOffset);
+    this.objects?.update(playerFeet);
+
     if (window.triggerLightningOnce) {
       this.lighting.triggerLightning();
       window.triggerLightningOnce = false;
@@ -80,28 +90,31 @@ export class GameScene {
   }
 
   render() {
-  if (!this.isLoaded()) {
-    drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
-    return;
+    if (!this.isLoaded()) {
+      drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
+      return;
+    }
+
+    // Base & mid-layer lighting (under player)
+    this.lighting.renderBase();
+    this.lighting.renderMidLayer();
+
+    // Draw map base
+    renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
+
+    // ✅ Draw all static object sprites (chairs, etc.)
+    this.objects?.draw();
+
+    // ✅ Draw player and entities
+    for (const e of this.entities) e?.draw?.();
+
+    // Overlay lighting drawn last
+    this.lighting.renderOverlay();
+
+    // Hover effects + dialog/UI
+    this.events?.renderHoverOverlay();
+    if (this.dialog.visible) this.dialog.draw();
   }
-
-  // Base & mid-layer lighting (under player)
-  this.lighting.renderBase();
-  this.lighting.renderMidLayer();
-
-  // Draw map below player
-  renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
-
-  // ✅ Draw entities (player + feet rect) BEFORE overlay lighting
-  for (const e of this.entities) e?.draw?.();
-
-  // Overlay lighting drawn last (so debug visuals remain visible)
-  this.lighting.renderOverlay();
-
-  // Hover effects + dialog/UI
-  this.events?.renderHoverOverlay();
-  if (this.dialog.visible) this.dialog.draw();
-}
 
   renderPost() {}
 }

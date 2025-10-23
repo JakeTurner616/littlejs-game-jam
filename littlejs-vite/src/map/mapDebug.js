@@ -5,13 +5,16 @@ import {
 } from 'littlejsengine';
 import { isoToWorld, worldToIso } from './isoMath.js';
 
-// ──────────────────────────────────────────────
-// State for elevation offset cycling
-// ──────────────────────────────────────────────
+/*───────────────────────────────────────────────
+  ELEVATION OFFSET STATE
+───────────────────────────────────────────────*/
 let currentOffsetIndex = 0;
 let availableOffsets = [0];
 
-/** Draws full debug grid, hover highlight, player marker, and colliders. */
+/**
+ * Renders debug grid, hover highlight, player marker, and colliders.
+ * Now also supports depth polygon debug visualization for walls + objects.
+ */
 export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENABLED = true) {
   if (!DEBUG_ENABLED || !map.mapData) return;
 
@@ -20,14 +23,12 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const halfW = TILE_W / 2;
   const halfH = TILE_H / 2;
 
-  // Build available offsets list on first call
   if (availableOffsets.length === 1 && floorOffsets) {
     const values = Array.from(floorOffsets.values());
     const unique = [0, ...values.filter((v, i, a) => a.indexOf(v) === i)];
     availableOffsets = unique.sort((a, b) => a - b);
   }
 
-  // Cycle with Q / E
   if (keyWasPressed('KeyQ')) {
     currentOffsetIndex = (currentOffsetIndex - 1 + availableOffsets.length) % availableOffsets.length;
     console.log('[MapDebug] Switched to offset', availableOffsets[currentOffsetIndex]);
@@ -40,7 +41,9 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const floorOffsetWorld = availableOffsets[currentOffsetIndex] || 0;
   const anchorOffsetY = ((4.0) - TILE_H) / 2 * 2;
 
-  // Grid
+  // ──────────────────────────────────────────────
+  // GRID
+  // ──────────────────────────────────────────────
   const gridColor = rgb(0, 1, 0);
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
@@ -90,39 +93,64 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   if (mouseWasPressed(0))
     console.log('Tile debug clicked at', cMouse, rMouse);
 
-  // Display current offset on screen
+  // HUD offset text
   drawText(
     `Offset ${floorOffsetWorld.toFixed(3)} (${currentOffsetIndex + 1}/${availableOffsets.length})`,
     vec2(0.5, 0.5),
     0.25,
     rgb(1, 1, 1)
   );
+
+  // ✅ NEW: visualize all depth polygons (walls + objects)
+  drawAllDepthPolygons(map, playerPos, playerFeetOffset);
 }
 
-/** Draws the wall polygon (yellow) and casted depth plane (blue). */
-export function drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX) {
-  if (!wallPoly) return;
-  const pts = wallPoly.worldPoly;
+/**
+ * Unified fade debug overlay: draws yellow polygon and blue depth line
+ * for both wall and object depth polygons.
+ */
+function drawAllDepthPolygons(map, playerPos, playerFeetOffset) {
+  const { _wallPolygonsCache, _objectSystemRef } = map;
+  const playerFeet = playerPos.add(playerFeetOffset);
 
-  // Yellow polygon
+  // walls (cached in mapRenderer)
+  if (Array.isArray(_wallPolygonsCache))
+    for (const p of _wallPolygonsCache)
+      drawDepthDebug({ worldPoly: p.worldPoly }, playerFeet, p._depthFunc);
+
+  // objects (if objectSystem is attached)
+  if (_objectSystemRef?.depthPolygons?.length)
+    for (const p of _objectSystemRef.depthPolygons)
+      drawDepthDebug({ worldPoly: p.polyPts }, playerFeet, _objectSystemRef.getDepthFunc?.());
+}
+
+/**
+ * Draws one depth polygon (yellow outline) and its depth slice (blue line)
+ */
+export function drawDepthDebug(polyObj, playerFeet, getPolygonDepthYAtX) {
+  if (!polyObj?.worldPoly) return;
+  const pts = polyObj.worldPoly;
+
+  // yellow polygon
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
     drawLine(a, b, 0.03, new Color(1, 0.8, 0.1, 0.9));
   }
 
-  // Blue horizontal depth slice
-  const polyY = getPolygonDepthYAtX(playerFeet, pts);
-  if (polyY !== null) {
-    drawLine(
-      vec2(playerFeet.x - 0.15, polyY),
-      vec2(playerFeet.x + 0.15, polyY),
-      0.05,
-      new Color(0.1, 0.6, 1, 0.9)
-    );
+  // blue depth plane
+  if (typeof getPolygonDepthYAtX === 'function') {
+    const polyY = getPolygonDepthYAtX(playerFeet, pts);
+    if (polyY !== null)
+      drawLine(
+        vec2(playerFeet.x - 0.15, polyY),
+        vec2(playerFeet.x + 0.15, polyY),
+        0.05,
+        new Color(0.1, 0.6, 1, 0.9)
+      );
   }
 }
 
-/** Utility to draw diamonds for grid and highlights. */
+/** Utility diamond */
 function drawDiamond(center, halfW, halfH, color, thick) {
   const p = center;
   const pts = [
