@@ -199,9 +199,13 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
     }
   }
 
-  // Entities drawn after map as usual
-  for (const e of entities) e.draw?.();
-
+  // ──────────────────────────────────────────────
+  // DEBUG GRID AND POLYGONS (draw BELOW entities)
+  // ──────────────────────────────────────────────
   if (DEBUG_MAP_ENABLED)
     renderMapDebug(map, playerPos, playerFeetOffset, PPU, true);
+
+  // ✅ Entities drawn *after* debug grid, so player’s magenta feet rect stays visible
+  for (const e of entities)
+    e.draw?.();
 }

@@ -14,6 +14,7 @@ import {
   ✅ Adds realistic dust-style footstep particles
   ✅ Adds soft *isometric distorted* shadow under the player
   ✅ Smoothly animates shadow size transitions on movement
+  ✅ DEBUG: Magenta rect shows exact world-space feet position
 */
 
 export class PlayerController {
@@ -42,9 +43,9 @@ export class PlayerController {
     this.footstepInterval = 0.18;
 
     // Shadow scaling control
-    this.shadowScale = 1.0;           // current scale
-    this.shadowTargetScale = 1.0;     // target scale (changes when moving)
-    this.shadowLerpSpeed = 5.0;       // how fast to interpolate between states
+    this.shadowScale = 1.0;
+    this.shadowTargetScale = 1.0;
+    this.shadowLerpSpeed = 5.0;
   }
 
   setColliders(colliders) { this.mapColliders = colliders || []; }
@@ -89,8 +90,8 @@ export class PlayerController {
     let newState = isMoving ? 'walk' : 'idle';
     let newDir = this.direction;
 
-    // Smooth shadow growth/shrink logic
-    this.shadowTargetScale = isMoving ? 1.15 : 1.0; // slightly larger while walking
+    // Shadow growth/shrink
+    this.shadowTargetScale = isMoving ? 1.15 : 1.0;
     const t = clamp(timeDelta * this.shadowLerpSpeed, 0, 1);
     this.shadowScale += (this.shadowTargetScale - this.shadowScale) * t;
 
@@ -163,14 +164,9 @@ export class PlayerController {
     ).emitParticle();
   }
 
-  /*───────────────────────────────────────────────
-    ISO SHADOW
-  ────────────────────────────────────────────────*/
   drawShadow() {
     const shadowPos = this.pos.add(this.feetOffset);
     const baseRadius = 0.3 * this.shadowScale;
-
-    // Apply isometric distortion
     const width = baseRadius * 1.8;
     const height = baseRadius * 0.9;
 
@@ -178,7 +174,6 @@ export class PlayerController {
     const outer = vec2(width * 1.2, height * 1.2);
     const inner = vec2(width, height);
 
-    // Outer soft gradient and inner core
     drawEllipse(pos, outer, new Color(0, 0, 0, 0.08), 0);
     drawEllipse(pos, inner, new Color(0, 0, 0, 0.25), 0);
   }
@@ -225,11 +220,15 @@ export class PlayerController {
       (f.h / this.ppu) * scaleFactor
     );
 
-    // Draw smoothly animated isometric shadow
+    // Draw shadow first
     this.drawShadow();
 
-    // Draw sprite
+    // Draw sprite slightly above feet
     drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
+
+// DEBUG: visualize world feet position
+const feet = this.pos.add(this.feetOffset);
+drawRect(feet, vec2(0.06, 0.06), new Color(1, 0, 1, 1));
   }
 
   setState(s) { this.state = s; }

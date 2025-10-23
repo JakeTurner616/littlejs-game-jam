@@ -1,3 +1,4 @@
+// src/environment/lightingSystem.js
 'use strict';
 import { drawRect, vec2, hsl, Color } from 'littlejsengine';
 
@@ -102,14 +103,25 @@ export class LightingSystem {
   /*───────────────────────────────────────────────
     RENDER
   ────────────────────────────────────────────────*/
-  renderBase() {
-    drawRect(vec2(0, 0), vec2(9999, 9999), hsl(0, 0, 0.15));
+
+  /**
+   * Draws base dark layer anchored to camera position
+   * so it always matches world and fade depth alignment.
+   */
+  renderBase(cameraPos = vec2(0, 0)) {
+    // ✅ Centered background rectangle following camera
+    const size = vec2(128, 128); // large enough to fill viewport
+    drawRect(cameraPos, size, hsl(0, 0, 0.15));
   }
 
   renderMidLayer(cameraPos = vec2(0, 0)) {
     if (this.lightningRenderMode === 'background' && this.lightningFlash > 0)
-      drawRect(vec2(0, 0), vec2(9999, 9999),
-        new Color(1, 1, 1, this.lightningFlash * 0.35));
+      drawRect(
+        cameraPos,
+        vec2(128, 128),
+        new Color(1, 1, 1, this.lightningFlash * 0.35)
+      );
+
     if (this.rainRenderMode === 'background' && this.rainEnabled)
       this._renderRain(cameraPos, true);
   }
@@ -132,7 +144,8 @@ export class LightingSystem {
       const d = drops[i];
       const dx = d.x - cameraPos.x;
       const dy = d.y - cameraPos.y;
-      if (dx < -viewHalfW || dx > viewHalfW || dy < -viewHalfH || dy > viewHalfH) continue;
+      if (dx < -viewHalfW || dx > viewHalfW || dy < -viewHalfH || dy > viewHalfH)
+        continue;
 
       color.a = brightness * d.alpha;
       drawRect(vec2(d.x, d.y), vec2(d.width, d.len), color);

@@ -11,7 +11,7 @@ import { DialogBox } from '../ui/DialogBox.js';
 import { EventRegistry } from '../map/eventRegistry.js';
 import { LightingSystem } from '../environment/lightingSystem.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -80,20 +80,28 @@ export class GameScene {
   }
 
   render() {
-    if (!this.isLoaded()) {
-      drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
-      return;
-    }
-
-    this.lighting.renderBase();
-    this.lighting.renderMidLayer();
-    renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
-    this.lighting.renderOverlay();
-
-    this.events?.renderHoverOverlay();
-    for (const e of this.entities) e?.draw?.();
-    if (this.dialog.visible) this.dialog.draw();
+  if (!this.isLoaded()) {
+    drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
+    return;
   }
+
+  // Base & mid-layer lighting (under player)
+  this.lighting.renderBase();
+  this.lighting.renderMidLayer();
+
+  // Draw map below player
+  renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
+
+  // ✅ Draw entities (player + feet rect) BEFORE overlay lighting
+  for (const e of this.entities) e?.draw?.();
+
+  // Overlay lighting drawn last (so debug visuals remain visible)
+  this.lighting.renderOverlay();
+
+  // Hover effects + dialog/UI
+  this.events?.renderHoverOverlay();
+  if (this.dialog.visible) this.dialog.draw();
+}
 
   renderPost() {}
 }
