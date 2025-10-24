@@ -3,9 +3,15 @@
 import { overlayContext, mainCanvasSize, mouseWheel } from 'littlejsengine';
 import { TextTheme } from './TextTheme.js';
 
+/**
+ * DialogBox — supports monologue and dialogue modes
+ * -------------------------------------------------
+ * • Text now wraps naturally around portrait
+ * • Scrollable and typewriter effect retained
+ */
 export class DialogBox {
   constructor(mode = 'monologue') {
-    this.mode = mode; // "monologue" | "dialogue"
+    this.mode = mode;
     this.fontFamily = TextTheme.fontFamily;
     this.text = '';
     this.visible = true;
@@ -47,43 +53,53 @@ export class DialogBox {
     this.scrollY = 0;
   }
 
-update(dt) {
-  if (!this.visible || !this.text) return;
+  update(dt) {
+    if (!this.visible || !this.text) return;
 
-  // ✅ Reverse scroll direction for natural behavior
-  const wheelDelta = mouseWheel;
-  if (wheelDelta) this.scrollY += wheelDelta * this.scrollSpeed;
+    // reverse scroll for natural direction
+    const wheelDelta = mouseWheel;
+    if (wheelDelta) this.scrollY += wheelDelta * this.scrollSpeed;
 
-  // typing effect
-  if (this.pauseTimer > 0) {
-    this.pauseTimer -= dt;
-    return;
+    if (this.pauseTimer > 0) {
+      this.pauseTimer -= dt;
+      return;
+    }
+
+    const prevIndex = Math.floor(this.typeProgress);
+    if (prevIndex < this.text.length) {
+      this.typeProgress += dt * this.typingSpeed;
+      const currentIndex = Math.floor(this.typeProgress);
+      if (currentIndex > prevIndex && this.text[prevIndex] === '.')
+        this.pauseTimer = this.pauseDuration;
+    }
   }
 
-  const prevIndex = Math.floor(this.typeProgress);
-  if (prevIndex < this.text.length) {
-    this.typeProgress += dt * this.typingSpeed;
-    const currentIndex = Math.floor(this.typeProgress);
-    if (currentIndex > prevIndex && this.text[prevIndex] === '.')
-      this.pauseTimer = this.pauseDuration;
-  }
-}
-
-  wrapText(ctx, text, maxWidth) {
+  /**
+   * Wrap text with dynamic left indent for portrait flow
+   */
+  wrapTextWithPortrait(ctx, text, boxX, boxY, boxW, boxH, portraitH, portraitIndentW) {
     const words = text.split(' ');
     const lines = [];
     let line = '';
+    let y = 0;
+
     for (const word of words) {
       const testLine = line ? `${line} ${word}` : word;
+      // available width depends on current vertical position
+      const currentMaxW = (y < portraitH)
+        ? boxW - portraitIndentW - 10 // indent next to portrait
+        : boxW;
       const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && line) {
-        lines.push(line);
+      if (metrics.width > currentMaxW && line) {
+        lines.push({ text: line, indent: (y < portraitH) ? portraitIndentW : 0 });
+        y += TextTheme.fontSize * 1.4;
         line = word;
       } else {
         line = testLine;
       }
     }
-    if (line) lines.push(line);
+    if (line)
+      lines.push({ text: line, indent: (y < portraitH) ? portraitIndentW : 0 });
     return lines;
   }
 
@@ -99,7 +115,7 @@ update(dt) {
     const isMonologue = this.mode === 'monologue';
 
     // ──────────────────────────────────────────────
-    // MONOLOGUE MODE
+    // MONOLOGUE MODE (centered block)
     // ──────────────────────────────────────────────
     if (isMonologue) {
       const paddingX = 50 * uiScale * screenFactor;
@@ -110,16 +126,6 @@ update(dt) {
       const boxY = canvasH - boxH - paddingY;
 
       overlayContext.save();
-      overlayContext.font = `${scale}px ${this.fontFamily}`;
-      overlayContext.textBaseline = 'top';
-      const lines = this.wrapText(overlayContext, shownText, boxW - paddingX * 2);
-      overlayContext.restore();
-
-      const lineHeight = scale * 1.4;
-      const textHeight = lines.length * lineHeight;
-
-      // background box
-      overlayContext.save();
       overlayContext.fillStyle = TextTheme.boxColor.toString();
       overlayContext.fillRect(boxX, boxY, boxW, boxH);
       overlayContext.strokeStyle = TextTheme.borderColor.toString();
@@ -127,34 +133,33 @@ update(dt) {
       overlayContext.strokeRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4);
       overlayContext.restore();
 
-      // text
       overlayContext.save();
-      overlayContext.fillStyle = TextTheme.textColor.toString();
       overlayContext.font = `${scale}px ${this.fontFamily}`;
-      overlayContext.textAlign = 'center';
       overlayContext.textBaseline = 'top';
-      const yOffset = boxY + (boxH - textHeight) / 2;
-      for (let i = 0; i < lines.length; i++) {
-        const x = boxX + boxW / 2;
-        const y = yOffset + i * lineHeight;
-        overlayContext.fillText(lines[i], x, y);
+      overlayContext.textAlign = 'center';
+      overlayContext.fillStyle = TextTheme.textColor.toString();
+
+      const lines = this.wrapTextWithPortrait(
+        overlayContext, shownText, boxX, boxY, boxW, boxH, 0, 0
+      );
+      const lineHeight = scale * 1.4;
+      let y = boxY + (boxH - lines.length * lineHeight) / 2;
+      for (const l of lines) {
+        overlayContext.fillText(l.text, boxX + boxW / 2, y);
+        y += lineHeight;
       }
       overlayContext.restore();
       return;
     }
 
     // ──────────────────────────────────────────────
-    // DIALOGUE MODE — left-aligned w/ scroll + portrait
+    // DIALOGUE MODE (portrait + text flow)
     // ──────────────────────────────────────────────
     const padding = 40 * uiScale * screenFactor;
-    const panelW = canvasW * 0.47; // slightly wider to fit scrollbar
+    const panelW = canvasW * 0.47;
     const panelH = canvasH * 0.5;
     const boxX = padding;
     const boxY = canvasH - panelH - padding;
-
-    const portraitSize = panelH * 0.4;
-    const textAreaX = boxX + portraitSize + padding * 0.9;
-    const textAreaW = panelW - portraitSize - padding * 1.6; // extra space for scrollbar gap
 
     // background box
     overlayContext.save();
@@ -165,26 +170,31 @@ update(dt) {
     overlayContext.strokeRect(boxX - 2, boxY - 2, panelW + 4, panelH + 4);
     overlayContext.restore();
 
-    // portrait (or placeholder)
+    const portraitSize = panelH * 0.4;
     const px = boxX + padding * 0.5;
     const py = boxY + padding * 0.5;
-    if (this.portrait) {
+    if (this.portrait)
       overlayContext.drawImage(this.portrait, px, py, portraitSize, portraitSize);
-    } else {
+    else {
       overlayContext.fillStyle = 'rgba(255,255,255,0.05)';
       overlayContext.fillRect(px, py, portraitSize, portraitSize);
       overlayContext.strokeStyle = 'rgba(255,255,255,0.2)';
       overlayContext.strokeRect(px, py, portraitSize, portraitSize);
     }
 
-    // text + scrollable region
+    // text region wraps around portrait
     overlayContext.save();
     overlayContext.font = `${scale * 1.05}px ${this.fontFamily}`;
     overlayContext.textAlign = 'left';
     overlayContext.textBaseline = 'top';
     overlayContext.fillStyle = TextTheme.textColor.toString();
 
-    const lines = this.wrapText(overlayContext, shownText, textAreaW);
+    const portraitIndentW = portraitSize + padding * 0.5;
+    const lines = this.wrapTextWithPortrait(
+      overlayContext, shownText, boxX, boxY, panelW - padding, panelH,
+      portraitSize + padding * 0.3, portraitIndentW
+    );
+
     const lineHeight = scale * 1.4;
     const totalHeight = lines.length * lineHeight;
     const visibleHeight = panelH - padding * 1.2;
@@ -193,21 +203,21 @@ update(dt) {
 
     overlayContext.save();
     overlayContext.beginPath();
-    overlayContext.rect(textAreaX, boxY + padding * 0.5, textAreaW, visibleHeight);
+    overlayContext.rect(boxX + padding * 0.4, boxY + padding * 0.4, panelW - padding, visibleHeight);
     overlayContext.clip();
 
-    let y = boxY + padding * 0.5 - this.scrollY;
-    for (const line of lines) {
-      overlayContext.fillText(line, textAreaX + 6, y);
+    let y = boxY + padding * 0.4 - this.scrollY;
+    for (const l of lines) {
+      overlayContext.fillText(l.text, boxX + padding * 0.4 + l.indent, y);
       y += lineHeight;
     }
     overlayContext.restore();
 
-    // scrollbar (moved slightly outward)
+    // scrollbar
     if (maxScroll > 0) {
       const barW = 6 * uiScale;
-      const barX = boxX + panelW - barW - padding * 0.1; // shifted outward
-      const trackY = boxY + padding * 0.5;
+      const barX = boxX + panelW - barW - padding * 0.1;
+      const trackY = boxY + padding * 0.4;
       const trackH = visibleHeight;
       const thumbH = Math.max(20, (visibleHeight / totalHeight) * trackH);
       const thumbY = trackY + (this.scrollY / maxScroll) * (trackH - thumbH);
@@ -217,6 +227,7 @@ update(dt) {
       overlayContext.fillStyle = 'rgba(255,255,255,0.6)';
       overlayContext.fillRect(barX, thumbY, barW, thumbH);
     }
+
     overlayContext.restore();
   }
 }
