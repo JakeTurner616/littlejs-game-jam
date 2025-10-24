@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js
+// src/scenes/GameScene.js — simple and correct render stack
 'use strict';
 import {
   vec2, setCameraPos, setCameraScale, drawText, hsl
@@ -6,13 +6,16 @@ import {
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
+import { ObjectTriggerEventSystem } from '../map/objectTriggers.js';
 import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { EventRegistry } from '../map/eventRegistry.js';
 import { LightingSystem } from '../environment/lightingSystem.js';
 import { ObjectSystem } from '../map/objectSystem.js';
+import { WitchEntity } from '../character/witchEntity.js';
+import { isoToWorld } from '../map/isoMath.js';
 
-setDebugMapEnabled(true);
+setDebugMapEnabled(false);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -20,9 +23,11 @@ export class GameScene {
     this.map = null;
     this.player = null;
     this.objects = null;
-    this.entities = [];
+    this.entitiesAbove = [];
+    this.entitiesBelow = [];
     this.dialog = new DialogBox('monologue');
     this.events = null;
+    this.objectTriggers = null;
     this.lighting = new LightingSystem();
   }
 
@@ -36,7 +41,6 @@ export class GameScene {
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
 
-    // ✅ Load object sprites
     this.objects = new ObjectSystem(this.map, PPU);
     await this.objects.load();
 
@@ -45,7 +49,13 @@ export class GameScene {
         EventRegistry[poly.eventId].execute(this, this.player);
     });
 
-    this.entities = [this.player];
+    this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
+      if (trigger?.eventId === 'witch_spawn') this.handleWitchSpawn(trigger);
+      else if (trigger?.eventId && EventRegistry[trigger.eventId])
+        EventRegistry[trigger.eventId].execute(this, this.player);
+    });
+    this.objectTriggers.loadFromMap();
+
     setCameraScale(PPU);
     setCameraPos(this.player.pos);
 
@@ -61,6 +71,41 @@ export class GameScene {
     this.ready = true;
   }
 
+  handleWitchSpawn(trigger) {
+  this.lighting.triggerLightning();
+
+  const props = trigger.properties || {};
+  const { TILE_W, TILE_H, mapData } = this.map;
+  const { width, height } = mapData;
+
+  // Default spawn at trigger center if no custom coords
+  let spawnPos = trigger.pos;
+
+  // Option 1: Tile coordinates (spawn_c / spawn_r)
+  if (props.spawn_c !== undefined && props.spawn_r !== undefined) {
+    const c = Number(props.spawn_c);
+    const r = Number(props.spawn_r);
+    spawnPos = isoToWorld(c, r, width, height, TILE_W, TILE_H);
+  }
+
+  // Option 2: Absolute world coordinates (spawn_x / spawn_y)
+  else if (props.spawn_x !== undefined && props.spawn_y !== undefined) {
+    spawnPos = vec2(Number(props.spawn_x), Number(props.spawn_y));
+  }
+
+  const direction = Number(props.direction ?? 0);
+  const renderLayer = props.renderLayer === 'below' ? 'below' : 'above';
+
+  const witch = new WitchEntity(spawnPos, direction, this.player.ppu, renderLayer);
+  witch.load().then(() => {
+    if (renderLayer === 'below')
+      this.entitiesBelow.push(witch);
+    else
+      this.entitiesAbove.push(witch);
+    console.log(`[GameScene] Witch spawned (${renderLayer}) at ${spawnPos.x.toFixed(2)}, ${spawnPos.y.toFixed(2)}`);
+  });
+}
+
   isLoaded() { return this.ready && this.player?.ready && this.map; }
 
   update() {
@@ -71,18 +116,11 @@ export class GameScene {
     this.events?.update();
     this.dialog.update(dt);
 
-    // ✅ update object fade based on player position
     const playerFeet = this.player.pos.add(this.player.feetOffset);
     this.objects?.update(playerFeet);
+    this.objectTriggers?.update(this.player.pos, this.player.feetOffset);
 
-    if (window.triggerLightningOnce) {
-      this.lighting.triggerLightning();
-      window.triggerLightningOnce = false;
-    }
-    if (window.toggleRain) {
-      this.lighting.toggleRain();
-      window.toggleRain = false;
-    }
+    for (const e of [...this.entitiesBelow, ...this.entitiesAbove]) e?.update?.(dt);
   }
 
   updatePost() {
@@ -95,23 +133,25 @@ export class GameScene {
       return;
     }
 
-    // Base & mid-layer lighting (under player)
+    // 1️⃣ LIGHTING BACKGROUND
     this.lighting.renderBase();
     this.lighting.renderMidLayer();
 
-    // Draw map base
+    // 2️⃣ BELOW-MAP ENTITIES FIRST (drawn under tiles)
+    this.entitiesBelow.sort((a, b) => a.pos.y - b.pos.y);
+    for (const e of this.entitiesBelow) e?.draw?.();
+
+    // 3️⃣ DRAW MAP ON TOP
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
 
-    // ✅ Draw all static object sprites (chairs, etc.)
+    // 4️⃣ ABOVE-MAP ENTITIES (player, objects, etc.)
     this.objects?.draw();
+    const aboveStack = [...this.entitiesAbove, this.player];
+    aboveStack.sort((a, b) => a.pos.y - b.pos.y);
+    for (const e of aboveStack) e?.draw?.();
 
-    // ✅ Draw player and entities
-    for (const e of this.entities) e?.draw?.();
-
-    // Overlay lighting drawn last
+    // 5️⃣ LIGHTING & UI OVERLAYS
     this.lighting.renderOverlay();
-
-    // Hover effects + dialog/UI
     this.events?.renderHoverOverlay();
     if (this.dialog.visible) this.dialog.draw();
   }

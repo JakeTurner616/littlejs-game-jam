@@ -13,7 +13,7 @@ let availableOffsets = [0];
 
 /**
  * Renders debug grid, hover highlight, player marker, and colliders.
- * Now also supports depth polygon debug visualization for walls + objects.
+ * Also supports depth polygon debug visualization and click-based coordinate logging.
  */
 export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENABLED = true) {
   if (!DEBUG_ENABLED || !map.mapData) return;
@@ -23,12 +23,14 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const halfW = TILE_W / 2;
   const halfH = TILE_H / 2;
 
+  // Build available offsets list once
   if (availableOffsets.length === 1 && floorOffsets) {
     const values = Array.from(floorOffsets.values());
     const unique = [0, ...values.filter((v, i, a) => a.indexOf(v) === i)];
     availableOffsets = unique.sort((a, b) => a - b);
   }
 
+  // Switch elevation offset
   if (keyWasPressed('KeyQ')) {
     currentOffsetIndex = (currentOffsetIndex - 1 + availableOffsets.length) % availableOffsets.length;
     console.log('[MapDebug] Switched to offset', availableOffsets[currentOffsetIndex]);
@@ -53,20 +55,25 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
     }
   }
 
-  // Hover highlight
+  // ──────────────────────────────────────────────
+  // HOVER HIGHLIGHT
+  // ──────────────────────────────────────────────
   const worldMouse = screenToWorld(mousePosScreen);
   const isoMouse = worldToIso(
     worldMouse.x, worldMouse.y, width, height, TILE_W, TILE_H, anchorOffsetY + floorOffsetWorld - 0.5
   );
   const cMouse = Math.floor(isoMouse.x);
   const rMouse = Math.floor(isoMouse.y);
+
   if (cMouse >= 0 && cMouse < width && rMouse >= 0 && rMouse < height) {
     const pos = isoToWorld(cMouse, rMouse, width, height, TILE_W, TILE_H)
       .subtract(vec2(0, anchorOffsetY + floorOffsetWorld));
     drawDiamond(pos, halfW, halfH, rgb(1, 1, 0), 0.05);
   }
 
-  // Player marker
+  // ──────────────────────────────────────────────
+  // PLAYER MARKER
+  // ──────────────────────────────────────────────
   if (playerPos) {
     const feet = playerPos.add(playerFeetOffset);
     const isoPlayer = worldToIso(
@@ -81,7 +88,9 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
     }
   }
 
-  // Colliders
+  // ──────────────────────────────────────────────
+  // COLLIDERS
+  // ──────────────────────────────────────────────
   if (colliders?.length) {
     const red = rgb(1, 0, 0);
     for (const c of colliders)
@@ -89,9 +98,17 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
         drawLine(c.pts[i], c.pts[(i + 1) % c.pts.length], 0.06, red);
   }
 
-  // Click debug
-  if (mouseWasPressed(0))
-    console.log('Tile debug clicked at', cMouse, rMouse);
+  // ──────────────────────────────────────────────
+  // CLICK DEBUG — PRINT TILE (C,R) + WORLD (X,Y)
+  // ──────────────────────────────────────────────
+  if (mouseWasPressed(0)) {
+    const worldX = worldMouse.x.toFixed(2);
+    const worldY = worldMouse.y.toFixed(2);
+    console.log(
+      `%c[MapDebug] Clicked Tile (C:${cMouse}, R:${rMouse}) → World (X:${worldX}, Y:${worldY})`,
+      'color: #6ff; font-weight: bold;'
+    );
+  }
 
   // HUD offset text
   drawText(
@@ -105,39 +122,31 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   drawAllDepthPolygons(map, playerPos, playerFeetOffset);
 }
 
-/**
- * Unified fade debug overlay: draws yellow polygon and blue depth line
- * for both wall and object depth polygons.
- */
+/*───────────────────────────────────────────────
+  DEPTH POLYGON VISUALIZATION
+───────────────────────────────────────────────*/
 function drawAllDepthPolygons(map, playerPos, playerFeetOffset) {
   const { _wallPolygonsCache, _objectSystemRef } = map;
   const playerFeet = playerPos.add(playerFeetOffset);
 
-  // walls (cached in mapRenderer)
   if (Array.isArray(_wallPolygonsCache))
     for (const p of _wallPolygonsCache)
       drawDepthDebug({ worldPoly: p.worldPoly }, playerFeet, p._depthFunc);
 
-  // objects (if objectSystem is attached)
   if (_objectSystemRef?.depthPolygons?.length)
     for (const p of _objectSystemRef.depthPolygons)
       drawDepthDebug({ worldPoly: p.polyPts }, playerFeet, _objectSystemRef.getDepthFunc?.());
 }
 
-/**
- * Draws one depth polygon (yellow outline) and its depth slice (blue line)
- */
+/*───────────────────────────────────────────────
+  DEPTH POLYGON DEBUG HELPER
+───────────────────────────────────────────────*/
 export function drawDepthDebug(polyObj, playerFeet, getPolygonDepthYAtX) {
   if (!polyObj?.worldPoly) return;
   const pts = polyObj.worldPoly;
+  for (let i = 0; i < pts.length; i++)
+    drawLine(pts[i], pts[(i + 1) % pts.length], 0.03, new Color(1, 0.8, 0.1, 0.9));
 
-  // yellow polygon
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    drawLine(a, b, 0.03, new Color(1, 0.8, 0.1, 0.9));
-  }
-
-  // blue depth plane
   if (typeof getPolygonDepthYAtX === 'function') {
     const polyY = getPolygonDepthYAtX(playerFeet, pts);
     if (polyY !== null)
@@ -150,7 +159,9 @@ export function drawDepthDebug(polyObj, playerFeet, getPolygonDepthYAtX) {
   }
 }
 
-/** Utility diamond */
+/*───────────────────────────────────────────────
+  DIAMOND SHAPE HELPER
+───────────────────────────────────────────────*/
 function drawDiamond(center, halfW, halfH, color, thick) {
   const p = center;
   const pts = [

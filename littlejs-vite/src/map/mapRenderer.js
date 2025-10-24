@@ -15,6 +15,36 @@ export function setDebugMapEnabled(v) { DEBUG_MAP_ENABLED = !!v; }
 export function isDebugMapEnabled() { return DEBUG_MAP_ENABLED; }
 
 /*───────────────────────────────────────────────────────────────
+  WALL VISIBILITY DEBUG TOGGLE
+───────────────────────────────────────────────────────────────*/
+let WALLS_VISIBLE = true;
+
+/** Toggle wall visibility */
+export function toggleWalls() {
+  WALLS_VISIBLE = !WALLS_VISIBLE;
+  console.log(
+    `%c[MapRenderer] Wall visibility → ${WALLS_VISIBLE ? 'ON' : 'OFF'}`,
+    'color:#6ff;font-weight:bold;'
+  );
+}
+
+/** Set wall visibility explicitly */
+export function setWallVisibility(v) {
+  WALLS_VISIBLE = !!v;
+  console.log(
+    `%c[MapRenderer] Wall visibility set to ${WALLS_VISIBLE}`,
+    'color:#6ff;font-weight:bold;'
+  );
+}
+
+/** Quick debug helper in console */
+if (typeof window !== 'undefined') {
+  window.toggleWalls = toggleWalls;
+  window.setWallVisibility = setWallVisibility;
+  console.log('%c[MapRenderer] Debug helpers → toggleWalls(), setWallVisibility(true/false)', 'color:#6f9;');
+}
+
+/*───────────────────────────────────────────────────────────────
   DEPTH POLYGON UTILITIES
 ───────────────────────────────────────────────────────────────*/
 export function getPolygonDepthYAtX(p, poly) {
@@ -135,6 +165,10 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
   // Iterate in same order as Tiled renders: each layer, top→bottom, left→right
   for (const layer of layers) {
     if (!layer.visible || layer.type !== 'tilelayer') continue;
+
+    // 🔁 Skip wall layers if visibility is off
+    if (!WALLS_VISIBLE && layer.name.toLowerCase().includes('wall')) continue;
+
     const { data, name: layerName } = layer;
     const floorOffsetWorld =
       floorOffsets?.get(layerName) ??
@@ -205,7 +239,7 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
   if (DEBUG_MAP_ENABLED)
     renderMapDebug(map, playerPos, playerFeetOffset, PPU, true);
 
-  // ✅ Entities drawn *after* debug grid, so player’s magenta feet rect stays visible
+  // ✅ Entities drawn *after* debug grid
   for (const e of entities)
     e.draw?.();
 }

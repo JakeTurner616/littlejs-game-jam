@@ -9,12 +9,9 @@ import {
   PlayerController — LittleMan (PixelOver export)
   -----------------------------------------------
   ✅ Reads 394×504 / 394×502 sprites
-  ✅ 75 idle frames (9×9 grid), 31 walk frames (6×6 grid)
-  ✅ Auto-scales to match old ~256×256 world height
-  ✅ Adds realistic dust-style footstep particles
-  ✅ Adds soft *isometric distorted* shadow under the player
-  ✅ Smoothly animates shadow size transitions on movement
-  ✅ DEBUG: Magenta rect shows exact world-space feet position
+  ✅ Auto-scales to match ~256×256 world height
+  ✅ Adds footstep particles and dynamic shadow
+  ✅ Frame-rate independent movement speed fix
 */
 
 export class PlayerController {
@@ -24,7 +21,7 @@ export class PlayerController {
     this.ppu = ppu;
 
     this.tileRatio = 0.5;
-    this.speed = 4 / this.ppu;
+    this.speed = 4 / this.ppu; // base world-units per second
     this.direction = 0;
     this.state = 'idle';
     this.frameIndex = 0;
@@ -38,11 +35,9 @@ export class PlayerController {
     this.mapColliders = [];
     this.feetOffset = vec2(0, 0.45);
 
-    // Footstep particle system
     this.footstepTimer = 0;
     this.footstepInterval = 0.18;
 
-    // Shadow scaling control
     this.shadowScale = 1.0;
     this.shadowTargetScale = 1.0;
     this.shadowLerpSpeed = 5.0;
@@ -90,6 +85,10 @@ export class PlayerController {
     let newState = isMoving ? 'walk' : 'idle';
     let newDir = this.direction;
 
+    // ✅ Frame-rate independent movement
+    const baseSpeed = this.speed;
+    const stepDist = baseSpeed * timeDelta * 60;
+
     // Shadow growth/shrink
     this.shadowTargetScale = isMoving ? 1.15 : 1.0;
     const t = clamp(timeDelta * this.shadowLerpSpeed, 0, 1);
@@ -99,7 +98,7 @@ export class PlayerController {
       const isoMove = vec2(move.x, move.y * this.tileRatio);
       const mag = Math.hypot(isoMove.x, isoMove.y);
       if (mag > 0) {
-        const step = isoMove.scale(this.speed / mag);
+        const step = isoMove.scale(stepDist / mag);
         const nextPos = this.pos.add(step);
         const feet = nextPos.add(this.feetOffset);
         if (!this.pointInsideAnyCollider(feet)) {
@@ -226,12 +225,10 @@ export class PlayerController {
     // Draw sprite slightly above feet
     drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, undefined, 0, 0, Color.white);
 
-// DEBUG: visualize world feet position
-const feet = this.pos.add(this.feetOffset);
-drawRect(feet, vec2(0.06, 0.06), new Color(1, 0, 1, 1));
+    // DEBUG: visualize world feet position
+    const feet = this.pos.add(this.feetOffset);
+    drawRect(feet, vec2(0.06, 0.06), new Color(1, 0, 1, 1));
   }
-
-  setState(s) { this.state = s; }
 
   currentFrames() {
     const d = this.direction + 1;
