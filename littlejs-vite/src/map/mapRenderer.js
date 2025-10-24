@@ -1,245 +1,153 @@
-// src/map/mapRenderer.js
+// src/map/mapRenderer.js  ✅ optimized for performance
 'use strict';
-
-import {
-  drawTile, drawRect, vec2, hsl, Color, clamp
-} from 'littlejsengine';
+import { drawTile, vec2, Color, clamp } from 'littlejsengine';
 import { isoToWorld, tmxPxToWorld } from './isoMath.js';
 import { renderMapDebug, drawDepthDebug } from './mapDebug.js';
 
-/*───────────────────────────────────────────────────────────────
-  DEBUG CONTROL
-───────────────────────────────────────────────────────────────*/
 let DEBUG_MAP_ENABLED = true;
-export function setDebugMapEnabled(v) { DEBUG_MAP_ENABLED = !!v; }
-export function isDebugMapEnabled() { return DEBUG_MAP_ENABLED; }
+export const setDebugMapEnabled = v => (DEBUG_MAP_ENABLED = !!v);
+export const isDebugMapEnabled = () => DEBUG_MAP_ENABLED;
 
-/*───────────────────────────────────────────────────────────────
-  WALL VISIBILITY DEBUG TOGGLE
-───────────────────────────────────────────────────────────────*/
 let WALLS_VISIBLE = true;
+export const toggleWalls = () => (WALLS_VISIBLE = !WALLS_VISIBLE);
+export const setWallVisibility = v => (WALLS_VISIBLE = !!v);
 
-/** Toggle wall visibility */
-export function toggleWalls() {
-  WALLS_VISIBLE = !WALLS_VISIBLE;
-  console.log(
-    `%c[MapRenderer] Wall visibility → ${WALLS_VISIBLE ? 'ON' : 'OFF'}`,
-    'color:#6ff;font-weight:bold;'
-  );
-}
+const fadeAlphaMap = new Map();
 
-/** Set wall visibility explicitly */
-export function setWallVisibility(v) {
-  WALLS_VISIBLE = !!v;
-  console.log(
-    `%c[MapRenderer] Wall visibility set to ${WALLS_VISIBLE}`,
-    'color:#6ff;font-weight:bold;'
-  );
-}
-
-/** Quick debug helper in console */
-if (typeof window !== 'undefined') {
-  window.toggleWalls = toggleWalls;
-  window.setWallVisibility = setWallVisibility;
-  console.log('%c[MapRenderer] Debug helpers → toggleWalls(), setWallVisibility(true/false)', 'color:#6f9;');
-}
-
-/*───────────────────────────────────────────────────────────────
-  DEPTH POLYGON UTILITIES
-───────────────────────────────────────────────────────────────*/
+/*───────────────────────────────────────────────*/
 export function getPolygonDepthYAtX(p, poly) {
-  const intersections = [];
+  const x = p.x;
+  let nearest = null;
+  let minDist = Infinity;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i], b = poly[j];
-    if (Math.abs(a.x - b.x) < 1e-6) continue;
-    const t = (p.x - a.x) / (b.x - a.x);
-    if (t >= 0 && t <= 1)
-      intersections.push(a.y + (b.y - a.y) * t);
+    const dx = b.x - a.x;
+    if (Math.abs(dx) < 1e-6) continue;
+    const t = (x - a.x) / dx;
+    if (t < 0 || t > 1) continue;
+    const y = a.y + (b.y - a.y) * t;
+    const dy = Math.abs(p.y - y);
+    if (y <= p.y && dy < minDist) { minDist = dy; nearest = y; }
   }
-  if (!intersections.length) return null;
-  const playerY = p.y;
-  intersections.sort((a, b) => Math.abs(playerY - a) - Math.abs(playerY - b));
-  for (const y of intersections)
-    if (y <= playerY) return y;
-  return intersections[0];
+  return nearest;
 }
 
-/*───────────────────────────────────────────────────────────────
-  DEPTH POLYGON PARSER
-───────────────────────────────────────────────────────────────*/
+/*───────────────────────────────────────────────*/
 function parseWallPolygons(map, PPU) {
-  const polygons = [];
   const { objectLayers, mapData, TILE_W, TILE_H, rawImages, layers } = map;
+  if (!objectLayers) return [];
   const { width, height } = mapData;
-  if (!objectLayers) return polygons;
-
   const gidLookup = new Map();
+
   for (const layer of layers) {
     if (layer.type !== 'tilelayer') continue;
     const { data } = layer;
-    for (let r = 0; r < height; r++)
-      for (let c = 0; c < width; c++) {
-        const gid = data[r * width + c];
-        if (gid) gidLookup.set(`${c},${r}`, gid);
-      }
+    for (let idx = 0; idx < data.length; idx++) {
+      const gid = data[idx];
+      if (gid) gidLookup.set(idx, gid);
+    }
   }
 
+  const polygons = [];
   for (const layer of objectLayers) {
     if (layer.name !== 'DepthPolygons') continue;
     for (const obj of layer.objects || []) {
-      if (!obj.polygon || !obj.properties) continue;
-      const c = obj.properties.find(p => p.name === 'tile_c')?.value;
-      const r = obj.properties.find(p => p.name === 'tile_r')?.value;
-      const yOffsetProp = obj.properties.find(p => p.name === 'y_offset')?.value ?? 0;
+      const props = obj.properties;
+      if (!obj.polygon || !props) continue;
+      const c = props.find(p => p.name === 'tile_c')?.value;
+      const r = props.find(p => p.name === 'tile_r')?.value;
       if (c == null || r == null) continue;
-
-      const gid = gidLookup.get(`${c},${r}`);
+      const gid = gidLookup.get(r * width + +c);
       const img = gid ? rawImages[gid] : null;
       const imgH_world = img ? img.height / PPU : TILE_H;
-
+      const yOffset = (props.find(p => p.name === 'y_offset')?.value ?? 0) / PPU;
       const worldPoly = obj.polygon.map(pt => {
-        const w = tmxPxToWorld(
-          obj.x + pt.x,
-          obj.y + pt.y,
-          width,
-          height,
-          TILE_W,
-          TILE_H,
-          PPU,
-          true
-        );
+        const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, width, height, TILE_W, TILE_H, PPU, true);
         return vec2(w.x, w.y - TILE_H / 2);
       });
-
-      polygons.push({
-        c, r,
-        yOffset: yOffsetProp / PPU,
-        worldPoly,
-      });
+      polygons.push({ c, r, yOffset, worldPoly, imgH_world });
     }
   }
   return polygons;
 }
 
-/*───────────────────────────────────────────────────────────────
-  PER-PIXEL MASK CHECK
-───────────────────────────────────────────────────────────────*/
-function pixelOverlapCheck(playerFeet, tileWorldPos, img, imgW_world, imgH_world, PPU, TILE_H) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = img.width;
-  canvas.height = img.height;
-  ctx.drawImage(img, 0, 0);
-  const maskData = ctx.getImageData(0, 0, img.width, img.height).data;
+/*───────────────────────────────────────────────*/
+const tmpCanvas = document.createElement('canvas');
+const tmpCtx = tmpCanvas.getContext('2d');
+function pixelOverlapCheck(playerFeet, tileWorldPos, img, imgW_world, imgH_world, PPU) {
+  tmpCanvas.width = img.width;
+  tmpCanvas.height = img.height;
+  tmpCtx.clearRect(0, 0, img.width, img.height);
+  tmpCtx.drawImage(img, 0, 0);
+  const maskData = tmpCtx.getImageData(0, 0, img.width, img.height).data;
 
-  const relativeX = playerFeet.x - tileWorldPos.x;
-  const relativeY = playerFeet.y - tileWorldPos.y;
-  const localX = (relativeX / imgW_world + 0.5) * img.width;
-  const localY = (1 - (relativeY / imgH_world + 0.5)) * img.height;
-
+  const localX = (playerFeet.x - tileWorldPos.x) / imgW_world * img.width + img.width / 2;
+  const localY = (1 - (playerFeet.y - tileWorldPos.y) / imgH_world) * img.height / 2;
   const radius = 6;
-  for (let y = -radius; y <= radius; y++)
+  for (let y = -radius; y <= radius; y++) {
     for (let x = -radius; x <= radius; x++) {
-      const px = Math.floor(localX + x);
-      const py = Math.floor(localY + y);
+      const px = localX + x, py = localY + y;
       if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue;
-      const idx = (py * img.width + px) * 4 + 3;
+      const idx = ((py | 0) * img.width + (px | 0)) * 4 + 3;
       if (maskData[idx] > 32) return true;
     }
+  }
   return false;
 }
 
-/*───────────────────────────────────────────────────────────────
-  MAP RENDERER — FADE WHILE KEEPING TILED ORDER
-───────────────────────────────────────────────────────────────*/
-const fadeAlphaMap = new Map();
-
+/*───────────────────────────────────────────────*/
 export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec2(0, 0.45), entities = []) {
   if (!map.mapData) return;
   const { mapData, rawImages, tileInfos, layers, TILE_W, TILE_H, floorOffsets, wallOffsets } = map;
   const { width, height } = mapData;
-
   const playerFeet = playerPos.add(playerFeetOffset);
   const wallPolygons = parseWallPolygons(map, PPU);
 
-  // Iterate in same order as Tiled renders: each layer, top→bottom, left→right
   for (const layer of layers) {
     if (!layer.visible || layer.type !== 'tilelayer') continue;
-
-    // 🔁 Skip wall layers if visibility is off
     if (!WALLS_VISIBLE && layer.name.toLowerCase().includes('wall')) continue;
 
-    const { data, name: layerName } = layer;
-    const floorOffsetWorld =
-      floorOffsets?.get(layerName) ??
-      wallOffsets?.get(layerName) ?? 0;
+    const { data, name } = layer;
+    const offsetY = floorOffsets?.get(name) ?? wallOffsets?.get(name) ?? 0;
+    const n = width * height;
 
-    for (let r = 0; r < height; r++) {
-      for (let c = 0; c < width; c++) {
-        const gid = data[r * width + c];
-        if (!gid) continue;
+    for (let i = 0; i < n; i++) {
+      const gid = data[i];
+      if (!gid) continue;
+      const c = i % width, r = (i / width) | 0;
+      const info = tileInfos[gid], img = rawImages[gid];
+      if (!info || !img) continue;
 
-        const info = tileInfos[gid];
-        const img = rawImages[gid];
-        if (!info || !img) continue;
+      const worldPos = isoToWorld(c, r, width, height, TILE_W, TILE_H).subtract(vec2(0, offsetY));
+      const imgW_world = img.width / PPU;
+      const imgH_world = img.height / PPU;
+      const anchorOffsetY = (imgH_world - TILE_H) / 2;
 
-        const worldPos = isoToWorld(c, r, width, height, TILE_W, TILE_H)
-          .subtract(vec2(0, floorOffsetWorld));
-        const imgW_world = img.width / PPU;
-        const imgH_world = img.height / PPU;
-        const anchorOffsetY = (imgH_world - TILE_H) / 2;
+      const wallPoly = wallPolygons.find(p => p.c == c && p.r == r);
+      const tileKey = `${name}:${r},${c}`;
+      let alpha = fadeAlphaMap.get(tileKey) ?? 1.0, target = 1.0;
 
-        const wallPoly = wallPolygons
-          .filter(p => p.c === c && p.r === r)
-          .sort((a, b) =>
-            Math.abs(a.yOffset - floorOffsetWorld) - Math.abs(b.yOffset - floorOffsetWorld)
-          )[0];
-
-        const tileKey = `${layerName}:${r},${c}`;
-        let currentAlpha = fadeAlphaMap.get(tileKey) ?? 1.0;
-        let targetAlpha = 1.0;
-
-        if (wallPoly) {
-          const polyY = getPolygonDepthYAtX(playerFeet, wallPoly.worldPoly);
-          if (polyY !== null) {
-            const dist = playerFeet.y - polyY;
-            const tileWorldPos = worldPos.subtract(vec2(0, anchorOffsetY));
-            const overlap = pixelOverlapCheck(playerFeet, tileWorldPos, img, imgW_world, imgH_world, PPU, TILE_H);
-            if (overlap && dist > 0) {
-              const fadeRange = 0.4;
-              const fadeMin = 0.35;
-              targetAlpha = clamp(1.0 - dist / fadeRange, fadeMin, 1.0);
-            }
+      if (wallPoly) {
+        const polyY = getPolygonDepthYAtX(playerFeet, wallPoly.worldPoly);
+        if (polyY != null) {
+          const dist = playerFeet.y - polyY;
+          if (dist > 0 && pixelOverlapCheck(playerFeet, worldPos.subtract(vec2(0, anchorOffsetY)), img, imgW_world, imgH_world, PPU)) {
+            const fadeRange = 0.4, fadeMin = 0.35;
+            target = clamp(1 - dist / fadeRange, fadeMin, 1);
           }
         }
-
-        const fadeSpeed = 0.15;
-        currentAlpha += (targetAlpha - currentAlpha) * fadeSpeed;
-        fadeAlphaMap.set(tileKey, currentAlpha);
-
-        // Draw immediately, preserving the same iteration order as Tiled
-        drawTile(
-          worldPos.subtract(vec2(0, anchorOffsetY)),
-          vec2(imgW_world, imgH_world),
-          info,
-          new Color(1, 1, 1, currentAlpha),
-          0,
-          false
-        );
-
-        if (DEBUG_MAP_ENABLED && wallPoly)
-          drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX);
       }
+      alpha += (target - alpha) * 0.15;
+      fadeAlphaMap.set(tileKey, alpha);
+
+      drawTile(worldPos.subtract(vec2(0, anchorOffsetY)), vec2(imgW_world, imgH_world), info, new Color(1, 1, 1, alpha), 0, false);
+      if (DEBUG_MAP_ENABLED && wallPoly)
+        drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX);
     }
   }
 
-  // ──────────────────────────────────────────────
-  // DEBUG GRID AND POLYGONS (draw BELOW entities)
-  // ──────────────────────────────────────────────
   if (DEBUG_MAP_ENABLED)
     renderMapDebug(map, playerPos, playerFeetOffset, PPU, true);
 
-  // ✅ Entities drawn *after* debug grid
-  for (const e of entities)
-    e.draw?.();
+  for (const e of entities) e.draw?.();
 }

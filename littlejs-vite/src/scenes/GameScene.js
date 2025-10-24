@@ -14,7 +14,7 @@ import { WitchManager } from '../character/WitchManager.js';
 import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
