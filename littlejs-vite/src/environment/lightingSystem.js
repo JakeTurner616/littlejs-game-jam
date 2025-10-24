@@ -43,7 +43,7 @@ export class LightingSystem {
   toggleRain() { this.rainEnabled = !this.rainEnabled; }
   triggerLightning() {
     this.lightningEnabled = true;
-    this.lightningTimer = 0.12 + Math.random() * 0.08;
+    this.lightningTimer = 0.42 + Math.random() * 0.08;
     this.lightningFlash = 1;
   }
 

@@ -217,10 +217,44 @@
                  "width":0,
                  "x":925.75,
                  "y":1278.25
+                }, 
+                {
+                 "height":0,
+                 "id":118,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":-75.3333333333333,
+                         "y":-76.6666666666667
+                        }, 
+                        {
+                         "x":-13.6666666666666,
+                         "y":-75.6666666666666
+                        }, 
+                        {
+                         "x":61.3333333333334,
+                         "y":1.33333333333337
+                        }],
+                 "properties":[
+                        {
+                         "name":"eventId",
+                         "type":"string",
+                         "value":"window_scene_1"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":886,
+                 "y":372.666666666667
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -2199,12 +2233,12 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":true,
+         "visible":false,
          "x":0,
          "y":0
         }],
  "nextlayerid":31,
- "nextobjectid":118,
+ "nextobjectid":119,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

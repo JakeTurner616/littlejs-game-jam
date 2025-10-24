@@ -1,4 +1,4 @@
-// src/character/playerController.js
+// src/character/playerController.js — fixed to respect cinematicMode flag
 'use strict';
 import {
   vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos,
@@ -12,6 +12,7 @@ import {
   ✅ Auto-scales to match ~256×256 world height
   ✅ Adds footstep particles and dynamic shadow
   ✅ Frame-rate independent movement speed fix
+  ✅ Respects cinematic camera override
 */
 
 export class PlayerController {
@@ -117,7 +118,10 @@ export class PlayerController {
       this.footstepTimer = 0;
     }
 
-    setCameraPos(this.pos);
+    // ✅ Prevent camera override during cinematic mode
+    if (!window.scene?.cinematicMode) {
+      setCameraPos(this.pos);
+    }
 
     const key = `${newState}_${newDir + 1}`;
     if (key !== this.currentAnimKey) {

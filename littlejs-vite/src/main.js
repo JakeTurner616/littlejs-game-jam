@@ -67,6 +67,11 @@ const boxerTextures = [
 
 const portraitTextures = [
   '/assets/portraits/doorway.png',
+  '/assets/portraits/window_face.png',
+];
+
+const witchTextures = [
+  '/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
 ];
 
 // ──────────────────────────────────────────────
@@ -80,6 +85,7 @@ const preloadImages = [
   ...boxerTextures,
   ...mapTextures,
   ...portraitTextures,
+  ...witchTextures,
 ];
 
 // ──────────────────────────────────────────────
