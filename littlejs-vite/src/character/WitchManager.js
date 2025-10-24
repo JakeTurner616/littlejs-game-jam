@@ -6,6 +6,13 @@ import { isoToWorld } from '../map/isoMath.js';
 
 let WITCH_CACHE = null;
 
+/**
+ * WitchManager — handles all witch entity lifecycle
+ * -------------------------------------------------
+ * ✅ Spawns witch with synchronized lightning flash
+ * ✅ Caches animation frames for performance
+ * ✅ Supports cinematic camera pan
+ */
 export class WitchManager {
   constructor(scene) {
     this.scene = scene;
@@ -26,6 +33,7 @@ export class WitchManager {
 
   spawn(trigger) {
     if (!WITCH_CACHE) return this.spawnFull(trigger);
+
     const props = trigger.properties || {};
     const { TILE_W, TILE_H, mapData } = this.scene.map;
     const { width, height } = mapData;
@@ -42,14 +50,23 @@ export class WitchManager {
     witch.durations = WITCH_CACHE.durations;
     witch.texIndex = WITCH_CACHE.texIndex;
     witch.ready = true;
+
     this.entitiesBelow.push(witch);
     this.scene.camera.startCinematic(spawnPos, 170);
+
+    // ⚡ Trigger lightning flash when witch spawns
+    if (this.scene.lighting) {
+      this.scene.lighting.triggerLightning();
+      // optional: add subtle delay and second flash for eerie double strobe
+      setTimeout(() => this.scene.lighting.triggerLightning(), 180);
+    }
   }
 
   spawnFull(trigger) {
     const props = trigger.properties || {};
     const { TILE_W, TILE_H, mapData } = this.scene.map;
     const { width, height } = mapData;
+
     let spawnPos = trigger.pos;
     if (props.spawn_c !== undefined && props.spawn_r !== undefined)
       spawnPos = isoToWorld(+props.spawn_c, +props.spawn_r, width, height, TILE_W, TILE_H);
@@ -58,7 +75,14 @@ export class WitchManager {
 
     const direction = +props.direction || 0;
     const witch = new WitchEntity(spawnPos, direction, this.scene.player.ppu, 'below');
-    witch.load().then(() => this.entitiesBelow.push(witch));
+    witch.load().then(() => {
+      this.entitiesBelow.push(witch);
+      // ⚡ Flash lightning after texture is ready
+      if (this.scene.lighting) {
+        this.scene.lighting.triggerLightning();
+        setTimeout(() => this.scene.lighting.triggerLightning(), 180);
+      }
+    });
   }
 
   update(dt) {
