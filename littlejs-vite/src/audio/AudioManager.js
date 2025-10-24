@@ -4,19 +4,18 @@ import { SoundWave } from 'littlejsengine';
 
 export class AudioManager {
   constructor() {
-    this.sounds = {};
-    this.music = null;
+    this.sounds = Object.create(null);
     this.musicElement = null;
     this.musicStartTime = 0;
-    this.audioContext = null;
   }
 
-  // ──────────────────────────────────────────────
-  // SOUND EFFECTS
-  // ──────────────────────────────────────────────
+  /*───────────────────────────────────────────────
+    SOUND EFFECTS
+  ────────────────────────────────────────────────*/
   loadSound(name, path) {
-    this.sounds[name] = new SoundWave(path);
-    return this.sounds[name];
+    const s = new SoundWave(path);
+    this.sounds[name] = s;
+    return s;
   }
 
   playSound(name, pos = null, volume = 1, pitch = 1) {
@@ -24,46 +23,45 @@ export class AudioManager {
     if (s) s.play(pos, volume, pitch);
   }
 
-  // ──────────────────────────────────────────────
-  // MUSIC — STREAMED VIA <audio>
-  // ──────────────────────────────────────────────
-  async playMusic(path, volume = 0.5, loop = true) {
-    this.stopMusic();
-    console.log(`[AudioManager] Streaming music from: ${path}`);
+  /*───────────────────────────────────────────────
+    MUSIC — STREAMED VIA <audio>
+  ────────────────────────────────────────────────*/
+  playMusic(path, volume = 0.5, loop = true) {
+    this.stopMusic(); // ensures only one audio element active
 
     const audio = new Audio(path);
     audio.loop = loop;
     audio.volume = volume;
     audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
-    audio.autoplay = true;
+    audio.autoplay = false;
 
-    // Unlock on user gesture (autoplay restrictions)
+    // small inline unlock function (no closure allocations each play)
     const unlock = () => {
       audio.play().then(() => {
-        this.musicStartTime = performance.now() / 1000;
-        console.log(`[AudioManager] Music started → ${path}`);
-      }).catch(err => console.warn('[AudioManager] Music play blocked:', err));
-      document.removeEventListener('click', unlock);
+        this.musicStartTime = performance.now() * 0.001;
+      }).catch(() => {});
+      document.removeEventListener('pointerdown', unlock);
       document.removeEventListener('keydown', unlock);
     };
-    document.addEventListener('click', unlock);
-    document.addEventListener('keydown', unlock);
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
 
+    // start loading immediately
+    audio.load();
     this.musicElement = audio;
   }
 
-  // Real-time playback position (always in sync)
   getMusicTime() {
-    if (!this.musicElement) return 0;
-    return this.musicElement.currentTime || 0;
+    const a = this.musicElement;
+    return a ? a.currentTime : 0;
   }
 
   stopMusic() {
-    if (this.musicElement) {
-      this.musicElement.pause();
-      this.musicElement.currentTime = 0;
-      console.log('[AudioManager] Music stopped');
+    const a = this.musicElement;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
       this.musicElement = null;
     }
   }
