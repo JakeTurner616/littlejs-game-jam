@@ -62,13 +62,21 @@ export const EventRegistry = {
 
             showOptions();
           } else if (value === 'open') {
+            // move player inside
             player.pos.set(11.14, -11.04);
             scene.dialog.visible = false;
 
+            // switch rain to background (indoor effect)
+            if (scene.lighting) {
+              scene.lighting.setRainMode('background');
+              scene.lighting.lightningEnabled = false;
+            }
+
+            // show monologue after entering
             scene.dialog.setMode('monologue');
             scene.dialog.setText(
               'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +
-                'As you step inside, the air grows colder, and a sense of unease washes over you.'
+              'As you step inside, the air grows colder, and a sense of unease washes over you.'
             );
             scene.dialog.visible = true;
             player.frozen = false;
@@ -178,7 +186,7 @@ export const EventRegistry = {
             fadeOutWitch();
             player.frozen = false;
           } else if (value === 'away') {
-            scene.dialog.setText('You advert your gaze, but the feeling of being watched lingers.');
+            scene.dialog.setText('You avert your gaze, but the feeling of being watched lingers.');
 
             await new Promise((resolve) => {
               const waitForSpace = () => {
@@ -193,9 +201,8 @@ export const EventRegistry = {
             fadeOutWitch();
             player.frozen = false;
 
-                  scene.dialog.setMode('monologue');
-
-          scene.dialog.setText('The figure vanishes as you look away, leaving only an empty window pane behind.');
+            scene.dialog.setMode('monologue');
+            scene.dialog.setText('The figure vanishes as you look away, leaving only an empty window pane behind.');
           }
         });
       };
