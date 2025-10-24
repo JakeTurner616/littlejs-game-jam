@@ -9,7 +9,7 @@ export const event = {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
 
-    // Wait for previous text
+    // Wait for previous text to complete
     await new Promise((resolve) => {
       const check = () => {
         if (!scene.dialog.visible) return resolve();
@@ -54,16 +54,22 @@ export const event = {
             waitForSpace();
           });
           showOptions();
-        } else if (value === 'open') {
+        }
+
+        else if (value === 'open') {
+          // 🔑 Player steps inside
           player.pos.set(11.14, -11.04);
           scene.dialog.visible = false;
 
-          // switch rain to background (indoor)
+          // 🟣 Switch lighting to indoor mode *here* (not in GameScene)
           if (scene.lighting) {
             scene.lighting.setRainMode('background');
+            scene.lighting.setLightningMode('background');
             scene.lighting.lightningEnabled = false;
+            console.log('[doorTeleport1] Switched to indoor lighting (background mode)');
           }
 
+          // 🕯️ Continue monologue
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +
@@ -74,6 +80,7 @@ export const event = {
         }
       });
     };
+
     showOptions();
   },
 };
