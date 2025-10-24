@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js — fixed camera race condition with cinematicMode
+// src/scenes/GameScene.js — fixed camera race condition + visible trigger debug
 'use strict';
 import {
   vec2, setCameraPos, setCameraScale, drawText, hsl
@@ -15,7 +15,7 @@ import { ObjectSystem } from '../map/objectSystem.js';
 import { WitchEntity } from '../character/witchEntity.js';
 import { isoToWorld } from '../map/isoMath.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -29,7 +29,7 @@ export class GameScene {
     this.events = null;
     this.objectTriggers = null;
     this.lighting = new LightingSystem();
-    this.cinematicMode = false; // ✅ NEW FLAG
+    this.cinematicMode = false; // ✅ Prevents camera race
   }
 
   async onEnter() {
@@ -79,9 +79,7 @@ export class GameScene {
     const { TILE_W, TILE_H, mapData } = this.map;
     const { width, height } = mapData;
 
-    // Default spawn at trigger center if no custom coords
     let spawnPos = trigger.pos;
-
     if (props.spawn_c !== undefined && props.spawn_r !== undefined) {
       const c = Number(props.spawn_c);
       const r = Number(props.spawn_r);
@@ -92,8 +90,8 @@ export class GameScene {
 
     const direction = Number(props.direction ?? 0);
     const renderLayer = props.renderLayer === 'below' ? 'below' : 'above';
-
     const witch = new WitchEntity(spawnPos, direction, this.player.ppu, renderLayer);
+
     witch.load().then(() => {
       if (renderLayer === 'below')
         this.entitiesBelow.push(witch);
@@ -120,11 +118,9 @@ export class GameScene {
     for (const e of [...this.entitiesBelow, ...this.entitiesAbove]) e?.update?.(dt);
   }
 
-  // ✅ Camera only updates if NOT in cinematic mode
   updatePost() {
-    if (this.isLoaded() && !this.cinematicMode) {
+    if (this.isLoaded() && !this.cinematicMode)
       setCameraPos(this.player.pos);
-    }
   }
 
   render() {
@@ -133,24 +129,28 @@ export class GameScene {
       return;
     }
 
-    // 1️⃣ LIGHTING BACKGROUND
+    // 1️⃣ Lighting base/background
     this.lighting.renderBase();
     this.lighting.renderMidLayer();
 
-    // 2️⃣ BELOW-MAP ENTITIES FIRST
+    // 2️⃣ Entities below map
     this.entitiesBelow.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of this.entitiesBelow) e?.draw?.();
 
-    // 3️⃣ DRAW MAP
+    // 3️⃣ Map itself
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
 
-    // 4️⃣ ABOVE-MAP ENTITIES (player, objects, etc.)
+    // 4️⃣ Entities above map (player, objects, etc.)
     this.objects?.draw();
     const aboveStack = [...this.entitiesAbove, this.player];
     aboveStack.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of aboveStack) e?.draw?.();
 
-    // 5️⃣ LIGHTING & UI
+    // ✅ 5️⃣ Object trigger debug polygons (always above map)
+    if (this.objectTriggers)
+      this.objectTriggers.drawDebug();
+
+    // 6️⃣ Lighting overlays and UI
     this.lighting.renderOverlay();
     this.events?.renderHoverOverlay();
     if (this.dialog.visible) this.dialog.draw();

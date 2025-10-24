@@ -1042,7 +1042,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -2030,7 +2030,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -2163,7 +2163,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -2178,20 +2178,20 @@
                  "name":"",
                  "polygon":[
                         {
-                         "x":0,
-                         "y":0
+                         "x":-7.33333333333337,
+                         "y":-3.33333333333337
                         }, 
                         {
-                         "x":130.22641509434,
-                         "y":9.05882352941172
+                         "x":256.257801553941,
+                         "y":-13.3320470092967
                         }, 
                         {
-                         "x":135.333333333333,
-                         "y":154
+                         "x":259.371261949606,
+                         "y":292.737078478452
                         }, 
                         {
-                         "x":15.3207547169812,
-                         "y":144.941176470587
+                         "x":4.91188960425677,
+                         "y":278.235294117646
                         }],
                  "properties":[
                         {
@@ -2207,7 +2207,7 @@
                         {
                          "name":"radius",
                          "type":"float",
-                         "value":0.5
+                         "value":2
                         }, 
                         {
                          "name":"renderLayer",
@@ -2228,17 +2228,17 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":885,
-                 "y":519
+                 "x":889.408865112725,
+                 "y":403
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }],
  "nextlayerid":31,
- "nextobjectid":119,
+ "nextobjectid":120,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

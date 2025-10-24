@@ -1,36 +1,32 @@
 // src/map/mapDebug.js
 'use strict';
 import {
-  drawLine, vec2, rgb, screenToWorld, mousePosScreen, mouseWasPressed, Color, keyWasPressed, drawText
+  drawLine, vec2, rgb, screenToWorld, mousePosScreen, mouseWasPressed,
+  Color, keyWasPressed, drawText
 } from 'littlejsengine';
 import { isoToWorld, worldToIso } from './isoMath.js';
 
-/*───────────────────────────────────────────────
-  ELEVATION OFFSET STATE
-───────────────────────────────────────────────*/
 let currentOffsetIndex = 0;
 let availableOffsets = [0];
 
 /**
- * Renders debug grid, hover highlight, player marker, and colliders.
- * Also supports depth polygon debug visualization and click-based coordinate logging.
+ * Renders grid, hover highlight, player marker, and colliders.
+ * (Trigger polygons are now drawn from GameScene instead.)
  */
 export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENABLED = true) {
   if (!DEBUG_ENABLED || !map.mapData) return;
 
-  const { mapData, layers, colliders, TILE_W, TILE_H, floorOffsets } = map;
+  const { mapData, colliders, TILE_W, TILE_H, floorOffsets } = map;
   const { width, height } = mapData;
   const halfW = TILE_W / 2;
   const halfH = TILE_H / 2;
 
-  // Build available offsets list once
   if (availableOffsets.length === 1 && floorOffsets) {
     const values = Array.from(floorOffsets.values());
     const unique = [0, ...values.filter((v, i, a) => a.indexOf(v) === i)];
     availableOffsets = unique.sort((a, b) => a - b);
   }
 
-  // Switch elevation offset
   if (keyWasPressed('KeyQ')) {
     currentOffsetIndex = (currentOffsetIndex - 1 + availableOffsets.length) % availableOffsets.length;
     console.log('[MapDebug] Switched to offset', availableOffsets[currentOffsetIndex]);
@@ -43,9 +39,6 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const floorOffsetWorld = availableOffsets[currentOffsetIndex] || 0;
   const anchorOffsetY = ((4.0) - TILE_H) / 2 * 2;
 
-  // ──────────────────────────────────────────────
-  // GRID
-  // ──────────────────────────────────────────────
   const gridColor = rgb(0, 1, 0);
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
@@ -55,25 +48,18 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
     }
   }
 
-  // ──────────────────────────────────────────────
-  // HOVER HIGHLIGHT
-  // ──────────────────────────────────────────────
   const worldMouse = screenToWorld(mousePosScreen);
   const isoMouse = worldToIso(
     worldMouse.x, worldMouse.y, width, height, TILE_W, TILE_H, anchorOffsetY + floorOffsetWorld - 0.5
   );
   const cMouse = Math.floor(isoMouse.x);
   const rMouse = Math.floor(isoMouse.y);
-
   if (cMouse >= 0 && cMouse < width && rMouse >= 0 && rMouse < height) {
     const pos = isoToWorld(cMouse, rMouse, width, height, TILE_W, TILE_H)
       .subtract(vec2(0, anchorOffsetY + floorOffsetWorld));
     drawDiamond(pos, halfW, halfH, rgb(1, 1, 0), 0.05);
   }
 
-  // ──────────────────────────────────────────────
-  // PLAYER MARKER
-  // ──────────────────────────────────────────────
   if (playerPos) {
     const feet = playerPos.add(playerFeetOffset);
     const isoPlayer = worldToIso(
@@ -88,9 +74,7 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
     }
   }
 
-  // ──────────────────────────────────────────────
   // COLLIDERS
-  // ──────────────────────────────────────────────
   if (colliders?.length) {
     const red = rgb(1, 0, 0);
     for (const c of colliders)
@@ -98,48 +82,23 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
         drawLine(c.pts[i], c.pts[(i + 1) % c.pts.length], 0.06, red);
   }
 
-  // ──────────────────────────────────────────────
-  // CLICK DEBUG — PRINT TILE (C,R) + WORLD (X,Y)
-  // ──────────────────────────────────────────────
   if (mouseWasPressed(0)) {
-    const worldX = worldMouse.x.toFixed(2);
-    const worldY = worldMouse.y.toFixed(2);
     console.log(
-      `%c[MapDebug] Clicked Tile (C:${cMouse}, R:${rMouse}) → World (X:${worldX}, Y:${worldY})`,
-      'color: #6ff; font-weight: bold;'
+      `%c[MapDebug] Clicked tile → World (X:${worldMouse.x.toFixed(2)}, Y:${worldMouse.y.toFixed(2)})`,
+      'color:#6ff;font-weight:bold;'
     );
   }
 
-  // HUD offset text
   drawText(
     `Offset ${floorOffsetWorld.toFixed(3)} (${currentOffsetIndex + 1}/${availableOffsets.length})`,
     vec2(0.5, 0.5),
     0.25,
     rgb(1, 1, 1)
   );
-
-  // ✅ NEW: visualize all depth polygons (walls + objects)
-  drawAllDepthPolygons(map, playerPos, playerFeetOffset);
 }
 
 /*───────────────────────────────────────────────
-  DEPTH POLYGON VISUALIZATION
-───────────────────────────────────────────────*/
-function drawAllDepthPolygons(map, playerPos, playerFeetOffset) {
-  const { _wallPolygonsCache, _objectSystemRef } = map;
-  const playerFeet = playerPos.add(playerFeetOffset);
-
-  if (Array.isArray(_wallPolygonsCache))
-    for (const p of _wallPolygonsCache)
-      drawDepthDebug({ worldPoly: p.worldPoly }, playerFeet, p._depthFunc);
-
-  if (_objectSystemRef?.depthPolygons?.length)
-    for (const p of _objectSystemRef.depthPolygons)
-      drawDepthDebug({ worldPoly: p.polyPts }, playerFeet, _objectSystemRef.getDepthFunc?.());
-}
-
-/*───────────────────────────────────────────────
-  DEPTH POLYGON DEBUG HELPER
+  DEPTH POLYGON DEBUG HELPER (needed by mapRenderer)
 ───────────────────────────────────────────────*/
 export function drawDepthDebug(polyObj, playerFeet, getPolygonDepthYAtX) {
   if (!polyObj?.worldPoly) return;
