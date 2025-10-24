@@ -1,133 +1,206 @@
 // src/map/eventRegistry.js
 'use strict';
-import { setCameraPos, setCameraScale, vec2 } from 'littlejsengine';
+import { vec2, keyWasPressed, timeDelta } from 'littlejsengine';
+import { WitchEntity } from '../character/witchEntity.js';
 
-/**
- * EventRegistry — centralized in-game events
- * ------------------------------------------
- * Each key matches a Tiled `eventId` string.
- */
 export const EventRegistry = {
   /*───────────────────────────────────────────────
-    TELEPORT EVENTS
+    DOOR EVENT
   ────────────────────────────────────────────────*/
- door_teleport_1: {
-  description: 'Teleports player to door target area and triggers dialogue',
-  async execute(scene, player) {
-    // no cinematic mode needed here
-    player.pos.set(11.14, -11.04);
-    setCameraPos(player.pos);
+  door_teleport_1: {
+    description: 'Two-phase event: monologue intro → interactive dialogue',
+    async execute(scene, player) {
+      if (scene.dialog.isActive()) return;
+      player.frozen = true;
 
-    // ✅ Switch rain to background when inside
-    if (scene.lighting)
-      scene.lighting.setRainMode('background');
+      // Wait until text fully typed or dismissed
+      await new Promise((resolve) => {
+        const check = () => {
+          if (!scene.dialog.visible) return resolve();
+          if (scene.dialog.typeProgress >= scene.dialog.text.length)
+            setTimeout(() => {
+              const waitDismiss = () => {
+                if (!scene.dialog.visible) resolve();
+                else requestAnimationFrame(waitDismiss);
+              };
+              waitDismiss();
+            }, 300);
+          else requestAnimationFrame(check);
+        };
+        check();
+      });
 
-    scene.dialog.setMode('dialogue');
-    await scene.dialog.loadPortrait('/assets/portraits/doorway.png');
-    scene.dialog.visible = true;
-    scene.dialog.setText(
-      "Door: You're not supposed to be here.\n\n" +
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " +
-      "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. " +
-      "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."
-    );
+      if (scene.dialog.visible) scene.dialog.visible = false;
 
-    // ✅ Immediately resume normal camera follow
-    scene.cinematicMode = false;
-  }
-},
+      scene.dialog.setMode('dialogue');
+      await scene.dialog.loadPortrait('/assets/portraits/doorway.png');
+      scene.dialog.visible = true;
+
+      const intro =
+        'The disheveled door stands tall.\n' +
+        'A sign above clearly reads “KEEP OUT.”\n\n' +
+        'The wood seems to breathe ever so slightly…';
+
+      const options = [
+        { label: 'Open the door', value: 'open' },
+        { label: 'Knock', value: 'knock' },
+      ];
+
+      const showOptions = () => {
+        scene.dialog.setText(intro, options, async (value) => {
+          if (value === 'knock') {
+            scene.dialog.setText('You rap gently.\n\nYou hear nothing.');
+
+            await new Promise((resolve) => {
+              const waitForSpace = () => {
+                if (keyWasPressed('Space')) return resolve();
+                if (!scene.dialog.visible) return resolve();
+                requestAnimationFrame(waitForSpace);
+              };
+              waitForSpace();
+            });
+
+            showOptions();
+          } else if (value === 'open') {
+            player.pos.set(11.14, -11.04);
+            scene.dialog.visible = false;
+
+            scene.dialog.setMode('monologue');
+            scene.dialog.setText(
+              'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +
+                'As you step inside, the air grows colder, and a sense of unease washes over you.'
+            );
+            scene.dialog.visible = true;
+            player.frozen = false;
+          }
+        });
+      };
+
+      showOptions();
+    },
+  },
 
   /*───────────────────────────────────────────────
-    MANUAL POLYGON TRIGGER — WINDOW EVENT
+    WINDOW SCENE — haunting figure event
   ────────────────────────────────────────────────*/
   window_scene_1: {
-    description: 'Triggers dialogue at the creepy window with smooth camera movement and zoom.',
+    description: 'A haunting figure appears at the window.',
     async execute(scene, player) {
-      // ✅ ENABLE CINEMATIC MODE
-      scene.cinematicMode = true;
+      if (scene.dialog.isActive()) return;
 
-      const startPos = player.pos.copy();
-      const startScale = 128;
-      const targetPos = player.pos.add(vec2(-0.5, 0.7));
-      const targetScale = 160;
-      const duration = 3.5;
-      let elapsed = 0;
+      if (scene.lighting) {
+        scene.lighting.setRainMode('background');
+        scene.lighting.lightningEnabled = false;
+      }
 
-      const easeInOutCubic = (t) => (t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      // ── PHASE 1: Monologue intro ──
+      scene.dialog.setMode('monologue');
+      player.frozen = false;
+      scene.dialog.setText('You catch a flicker of motion beyond the windowpane...');
 
-      const animateCamera = () => {
-        elapsed += 1 / 60;
-        const t = Math.min(elapsed / duration, 1.0);
-        const easedT = easeInOutCubic(t);
+      await new Promise((resolve) => {
+        const wait = () => (!scene.dialog.visible ? resolve() : requestAnimationFrame(wait));
+        wait();
+      });
 
-        const currentPos = vec2(
-          startPos.x + (targetPos.x - startPos.x) * easedT,
-          startPos.y + (targetPos.y - startPos.y) * easedT
-        );
+      // ── PHASE 2: Dialogue interaction ──
+      scene.dialog.setMode('dialogue');
+      player.frozen = true;
+      await scene.dialog.loadPortrait('/assets/portraits/window_face.png');
+      scene.dialog.visible = true;
 
-        const currentScale = startScale + (targetScale - startScale) * easedT;
+      const intro =
+        'Something stands there... just beyond the glass.\n' +
+        'It does not move.\nIt only watches.';
 
-        setCameraPos(currentPos);
-        setCameraScale(currentScale);
+      const options = [
+        { label: 'Step closer', value: 'closer' },
+        { label: 'Look away', value: 'away' },
+      ];
 
-        if (t < 1.0) {
-          requestAnimationFrame(animateCamera);
-        } else {
-          showDialogue();
-        }
+      // Helper: find and fade the witch out
+      const fadeOutWitch = () => {
+        const witch = scene.entitiesBelow.find((e) => e instanceof WitchEntity);
+        if (witch && !witch.fading) witch.fadeOut(0.02);
       };
 
-      const showDialogue = async () => {
-        if (scene.lighting) {
-          scene.lighting.setRainMode('background');
-          scene.lighting.setLightningMode('background');
-          scene.lighting.lightningEnabled = false;
-        }
+      const showOptions = () => {
+        scene.dialog.setText(intro, options, async (value) => {
+          if (value === 'closer') {
+            player.frozen = true;
 
-        scene.dialog.setMode('dialogue');
-        await scene.dialog.loadPortrait('/assets/portraits/window_face.png');
-        scene.dialog.visible = true;
-        scene.dialog.setText(
-          "Window: The glass hums softly, like it's breathing.\n\n" +
-          "You lean closer—your reflection blinks.\n\n" +
-          "Voice: 'It's not polite to stare, child... you'll wake her.'"
-        );
+            // ──────────────────────────────────────────────
+            // Auto-walk NE (simulate W+D input)
+            // ──────────────────────────────────────────────
+            const start = player.pos.copy();
+            const step = vec2(0.6, 0.6 * player.tileRatio);
+            const target = player.pos.add(step);
+            const steps = 28;
+            const duration = 0.6;
+            const delay = (duration * 1000) / steps;
 
-        setTimeout(() => resetCamera(), 2500);
-      };
+            player.state = 'walk';
+            player.direction = 4; // northeast
+            player.frameIndex = 0;
+            player.frameTimer = 0;
+            player.footstepTimer = 0;
 
-      const resetCamera = () => {
-        let resetElapsed = 0;
-        const resetDuration = 1.0;
+            for (let i = 0; i <= steps; i++) {
+              const t = i / steps;
+              player.pos = vec2(
+                start.x + (target.x - start.x) * t,
+                start.y + (target.y - start.y) * t
+              );
 
-        const animateReset = () => {
-          resetElapsed += 1 / 60;
-          const t = Math.min(resetElapsed / resetDuration, 1.0);
-          const easedT = easeInOutCubic(t);
+              player.frameTimer += timeDelta;
+              const frames = player.frames[`walk_${player.direction + 1}`];
+              if (frames?.length) {
+                const dur =
+                  player.durations[`walk_${player.direction + 1}`][player.frameIndex] ||
+                  1 / 30;
+                if (player.frameTimer >= dur) {
+                  player.frameTimer -= dur;
+                  player.frameIndex = (player.frameIndex + 1) % frames.length;
+                }
+              }
 
-          const currentPos = vec2(
-            targetPos.x + (player.pos.x - targetPos.x) * easedT,
-            targetPos.y + (player.pos.y - targetPos.y) * easedT
-          );
+              if (i % 8 === 0) player.emitFootstepParticle(vec2(1, 1));
+              await new Promise((r) => setTimeout(r, delay));
+            }
 
-          const currentScale = targetScale + (startScale - targetScale) * easedT;
+            player.state = 'idle';
+            player.frameIndex = 0;
 
-          setCameraPos(currentPos);
-          setCameraScale(currentScale);
+            // Dialogue after movement
+            scene.dialog.setText('The figure looks through you with hollow eyes.');
+            await new Promise((r) => setTimeout(r, 2500));
+            scene.dialog.visible = false;
+            fadeOutWitch();
+            player.frozen = false;
+          } else if (value === 'away') {
+            scene.dialog.setText('You advert your gaze, but the feeling of being watched lingers.');
 
-          if (t < 1.0) {
-            requestAnimationFrame(animateReset);
-          } else {
-            scene.cinematicMode = false; // ✅ Re-enable camera follow
+            await new Promise((resolve) => {
+              const waitForSpace = () => {
+                if (keyWasPressed('Space')) return resolve();
+                if (!scene.dialog.visible) return resolve();
+                requestAnimationFrame(waitForSpace);
+              };
+              waitForSpace();
+            });
+
+            scene.dialog.visible = false;
+            fadeOutWitch();
+            player.frozen = false;
+
+                  scene.dialog.setMode('monologue');
+
+          scene.dialog.setText('The figure vanishes as you look away, leaving only an empty window pane behind.');
           }
-        };
-
-        animateReset();
+        });
       };
 
-      animateCamera();
-    }
+      showOptions();
+    },
   },
 };

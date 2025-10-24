@@ -76,7 +76,13 @@ export class PlayerController {
   update() {
     if (!this.ready) return;
 
-    const move = vec2(0, 0);
+  // 🔒 Prevent player input when frozen (during dialogues)
+  if (this.frozen) {
+    setCameraPos(this.pos);
+    return;
+  }
+
+  const move = vec2(0, 0);
     if (keyIsDown('KeyW') || keyIsDown('ArrowUp')) move.y += 1;
     if (keyIsDown('KeyS') || keyIsDown('ArrowDown')) move.y -= 1;
     if (keyIsDown('KeyA') || keyIsDown('ArrowLeft')) move.x -= 1;
