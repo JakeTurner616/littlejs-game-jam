@@ -62,6 +62,7 @@ export class GameScene {
 
     // preload jump-scare sound for instant playback
     audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
+    audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
 
     // object triggers
     this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {

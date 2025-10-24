@@ -1,6 +1,7 @@
 // src/events/doorTeleport1.js
 'use strict';
 import { keyWasPressed } from 'littlejsengine';
+import { audioManager } from '../audio/AudioManager.js';
 
 export const event = {
   id: 'door_teleport_1',
@@ -9,7 +10,7 @@ export const event = {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
 
-    // Wait for previous text to complete
+    // Wait for any previous text to finish
     await new Promise((resolve) => {
       const check = () => {
         if (!scene.dialog.visible) return resolve();
@@ -57,9 +58,19 @@ export const event = {
         }
 
         else if (value === 'open') {
-          // 🔑 Player steps inside
-          player.pos.set(11.14, -11.04);
+          // 🔑 Door opening logic
           scene.dialog.visible = false;
+
+          // 🎧 Play the door open sound *right as it opens*
+          try {
+            audioManager.playSound('door_open', null, 1.0);
+            console.log('[doorTeleport1] Door open sound played');
+          } catch (err) {
+            console.warn('[doorTeleport1] Failed to play door sound:', err);
+          }
+
+          // 🚪 Move the player inside
+          player.pos.set(11.14, -11.04);
 
           // 🟣 Switch lighting to indoor mode *here* (not in GameScene)
           if (scene.lighting) {
@@ -76,6 +87,7 @@ export const event = {
             'As you step inside, the air grows colder, and a sense of unease washes over you.'
           );
           scene.dialog.visible = true;
+
           player.frozen = false;
         }
       });

@@ -93,6 +93,7 @@ export const event = {
           fadeOutWitch();
           player.frozen = false;
           scene.dialog.setText('Just like that the figure is gone.');
+          scene.dialog.visible = false;
         } else if (value === 'away') {
           scene.dialog.setText('You avert your gaze, but the feeling of being watched lingers.');
           await new Promise((resolve) => {

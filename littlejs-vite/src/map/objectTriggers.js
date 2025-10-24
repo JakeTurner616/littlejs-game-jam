@@ -8,7 +8,7 @@ import { tmxPxToWorld } from './isoMath.js';
  * --------------------------------------------------------
  * • Reads Tiled object layer named "ObjectTriggers"
  * • Uses polygon containment instead of radius
- * • Includes console-accessible resetAll() for testing
+ * • Only draws debug polygons when debug mode is active
  */
 export class ObjectTriggerEventSystem {
   constructor(map, PPU, onEvent) {
@@ -18,9 +18,18 @@ export class ObjectTriggerEventSystem {
     this.enabled = true;
     this.triggers = [];
     this.visited = new Set();
+    this.debugEnabled = false; // ✅ debug toggle
 
-    if (typeof window !== 'undefined')
+    if (typeof window !== 'undefined') {
       window.resetAllTriggers = () => this.resetAll();
+      window.toggleTriggerDebug = () => {
+        this.debugEnabled = !this.debugEnabled;
+        console.log(
+          `%c[ObjectTriggerEventSystem] Debug mode → ${this.debugEnabled ? 'ON' : 'OFF'}`,
+          'color:#0ff;font-weight:bold;'
+        );
+      };
+    }
   }
 
   /*───────────────────────────────────────────────
@@ -52,7 +61,7 @@ export class ObjectTriggerEventSystem {
           return vec2(w.x, w.y - TILE_H / 2);
         });
       } else {
-        // fallback to single-point polygon if no shape given
+        // fallback single-point marker
         const w = tmxPxToWorld(obj.x, obj.y, width, height, TILE_W, TILE_H, PPU, true);
         polyPts = [vec2(w.x, w.y - TILE_H / 2)];
       }
@@ -112,10 +121,10 @@ export class ObjectTriggerEventSystem {
   }
 
   /*───────────────────────────────────────────────
-    DEBUG DRAW — exact polygon outlines
+    DEBUG DRAW — exact polygon outlines (only in debug)
   ────────────────────────────────────────────────*/
   drawDebug() {
-    if (!this.triggers.length) return;
+    if (!this.debugEnabled || !this.triggers.length) return; // ✅ only draw in debug
     const teal = new Color(0, 0.9, 0.9, 0.8);
     for (const t of this.triggers) {
       if (t.polyPts?.length >= 3) {
@@ -123,7 +132,6 @@ export class ObjectTriggerEventSystem {
         for (let i = 0; i < pts.length; i++)
           drawLine(pts[i], pts[(i + 1) % pts.length], 0.05, teal);
       } else if (t.polyPts?.length === 1) {
-        // single point fallback marker
         const p = t.polyPts[0];
         drawLine(vec2(p.x - 0.05, p.y), vec2(p.x + 0.05, p.y), 0.04, teal);
         drawLine(vec2(p.x, p.y - 0.05), vec2(p.x, p.y + 0.05), 0.04, teal);
