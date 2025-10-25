@@ -337,6 +337,65 @@
         }, 
         {
          "draworder":"topdown",
+         "id":36,
+         "name":"FogofWar",
+         "objects":[
+                {
+                 "height":0,
+                 "id":151,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":-6,
+                         "y":-226
+                        }, 
+                        {
+                         "x":-292,
+                         "y":-225.333333333333
+                        }, 
+                        {
+                         "x":-294,
+                         "y":-866
+                        }, 
+                        {
+                         "x":729.333333333333,
+                         "y":-865.333333333333
+                        }, 
+                        {
+                         "x":1116.66666666667,
+                         "y":-895.333333333333
+                        }, 
+                        {
+                         "x":1247.33333333333,
+                         "y":-895.333333333333
+                        }, 
+                        {
+                         "x":1243.33333333333,
+                         "y":20.6666666666667
+                        }, 
+                        {
+                         "x":871.333333333333,
+                         "y":32.6666666666667
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":261.333333333333,
+                 "y":1090.66666666667
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":28,
          "name":"EventPolygons",
          "objects":[
@@ -3315,7 +3374,8 @@
          "visible":true,
          "x":0,
          "y":0
-        }, 
+        },
+    
         {
          "draworder":"topdown",
          "id":30,
@@ -3386,8 +3446,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":36,
- "nextobjectid":150,
+ "nextlayerid":37,
+ "nextobjectid":152,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

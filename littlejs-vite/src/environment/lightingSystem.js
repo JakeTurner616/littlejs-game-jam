@@ -1,6 +1,6 @@
 // src/environment/lightingSystem.js
 'use strict';
-import { drawRect, vec2, hsl, Color } from 'littlejsengine';
+import { drawRect, vec2, hsl, Color, overlayContext, mainCanvas } from 'littlejsengine';
 
 /**
  * LightingSystem — optimized rain + lightning
@@ -8,6 +8,7 @@ import { drawRect, vec2, hsl, Color } from 'littlejsengine';
  * • Precomputed pooled rain streaks
  * • No allocations during update/render
  * • Cached color objects
+ * • Now draws lightning directly to overlayContext
  */
 export class LightingSystem {
   constructor() {
@@ -113,7 +114,7 @@ export class LightingSystem {
     if (this.rainRenderMode === 'overlay' && this.rainEnabled)
       this._renderRain(cam, false);
     if (this.lightningRenderMode === 'overlay' && this.lightningFlash > 0)
-      this._renderLightning();
+      this._renderLightningOverlay();
   }
 
   _renderRain(cam, bg) {
@@ -130,9 +131,17 @@ export class LightingSystem {
     }
   }
 
-  _renderLightning() {
-    const c = this._lightColor;
-    c.a = this.lightningFlash * 0.45;
-    drawRect(vec2(0, 0), vec2(9999, 9999), c);
+  //───────────────────────────────────────────────
+  // Draw lightning directly to overlayContext
+  //───────────────────────────────────────────────
+  _renderLightningOverlay() {
+    const a = this.lightningFlash * 0.45;
+    if (a <= 0) return;
+    const ctx = overlayContext;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    ctx.restore();
   }
 }
