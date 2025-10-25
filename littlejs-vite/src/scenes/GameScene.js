@@ -15,7 +15,7 @@ import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld, worldToIso } from '../map/isoMath.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -47,8 +47,8 @@ export class GameScene {
     const { width, height } = mapData;
 
     // ✅ Stable tile-space spawn
-    this.spawnC = 6.91;
-    this.spawnR = 13.72;
+    this.spawnC = 3.99;
+    this.spawnR = 11.49;
     const PLAYER_SPAWN = isoToWorld(this.spawnC, this.spawnR, width, height, TILE_W, TILE_H);
 
     this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);

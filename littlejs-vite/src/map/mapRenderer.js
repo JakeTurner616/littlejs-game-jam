@@ -1,4 +1,4 @@
-// src/map/mapRenderer.js  ✅ optimized for performance
+// src/map/mapRenderer.js  ✅ adds simple Y-check realism for fence fade
 'use strict';
 import { drawTile, vec2, Color, clamp } from 'littlejsengine';
 import { isoToWorld, tmxPxToWorld } from './isoMath.js';
@@ -110,6 +110,7 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
     const { data, name } = layer;
     const offsetY = floorOffsets?.get(name) ?? wallOffsets?.get(name) ?? 0;
     const n = width * height;
+    const isFenceLayer = name.toLowerCase().includes('fence');
 
     for (let i = 0; i < n; i++) {
       const gid = data[i];
@@ -131,16 +132,32 @@ export function renderMap(map, PPU, cameraPos, playerPos, playerFeetOffset = vec
         const polyY = getPolygonDepthYAtX(playerFeet, wallPoly.worldPoly);
         if (polyY != null) {
           const dist = playerFeet.y - polyY;
-          if (dist > 0 && pixelOverlapCheck(playerFeet, worldPos.subtract(vec2(0, anchorOffsetY)), img, imgW_world, imgH_world, PPU)) {
+
+          // ✅ fences use basic Y-range check instead of pixel overlap
+          let overlapOk = false;
+          if (isFenceLayer) {
+            const verticalRange = 0.75; // tolerance window (world-space units)
+            overlapOk = Math.abs(dist) < verticalRange;
+          } else {
+            overlapOk = pixelOverlapCheck(
+              playerFeet, worldPos.subtract(vec2(0, anchorOffsetY)),
+              img, imgW_world, imgH_world, PPU
+            );
+          }
+
+          if (dist > 0 && overlapOk) {
             const fadeRange = 0.4, fadeMin = 0.35;
             target = clamp(1 - dist / fadeRange, fadeMin, 1);
           }
         }
       }
+
       alpha += (target - alpha) * 0.15;
       fadeAlphaMap.set(tileKey, alpha);
 
-      drawTile(worldPos.subtract(vec2(0, anchorOffsetY)), vec2(imgW_world, imgH_world), info, new Color(1, 1, 1, alpha), 0, false);
+      drawTile(worldPos.subtract(vec2(0, anchorOffsetY)), vec2(imgW_world, imgH_world),
+        info, new Color(1, 1, 1, alpha), 0, false);
+
       if (DEBUG_MAP_ENABLED && wallPoly)
         drawDepthDebug(wallPoly, playerFeet, getPolygonDepthYAtX);
     }
