@@ -1,18 +1,58 @@
 // src/character/playerMovement.js
 'use strict';
-import { keyIsDown, mouseWasPressed, screenToWorld, mousePosScreen, vec2, clamp, timeDelta } from 'littlejsengine';
+import {
+  keyIsDown, mouseWasPressed, screenToWorld, mousePosScreen,
+  vec2, clamp, timeDelta, ParticleEmitter, Color, PI
+} from 'littlejsengine';
 
 export function handlePlayerMovement(p) {
   const move = vec2(0, 0);
 
-  // Handle click pathfinding
+  // 🟡 Click-to-move (Particle-based destination marker)
   if (mouseWasPressed(0)) {
     const target = screenToWorld(mousePosScreen);
     p.clickTarget = target;
-    p.path = p.buildSmartPath(target);
+    const path = p.buildSmartPath(target);
+    p.path = path;
+
+    // Destroy any existing emitter first
+    if (p.markerEmitter) {
+      p.markerEmitter.emitRate = 0;
+      p.markerEmitter.emitTime = 0;
+      p.markerEmitter = null;
+    }
+
+    // ✅ Only create particle marker if path is valid
+    if (path && path.length > 0) {
+      p.destinationMarker = target;
+      p.markerAlpha = 1.0;
+
+      // Create a particle emitter at destination
+p.markerEmitter = new ParticleEmitter(  
+  target,             // position  
+  0,                  // angle  
+  0.6,               // emitSize (smaller = tighter halo)  
+  0,                  // emitTime (0 = infinite)  
+  6,                 // emitRate (reduced from 50 for subtlety)  
+  0.2,                // emitCone (narrow cone instead of PI)  
+  undefined,          // tileInfo  
+  // 90's horror tone — sickly amber fade with red decay
+  new Color(0.9, 0.75, 0.3, 0.45),   // colorStartA (dim ochre / candlelight)
+  new Color(0.8, 0.6, 0.25, 0.4),    // colorStartB (slightly redder tone)
+  new Color(0.4, 0.1, 0.0, 0.0),     // colorEndA (dark blood-red fade)
+  new Color(0.2, 0.0, 0.0, 0.0),     // colorEndB (nearly black-red)
+  1.5, 0.06, 0.02, 0.02, 0,    // particleTime, sizeStart, sizeEnd, speed (very slow), angleSpeed  
+  0.98, 1, 0, 0.2, 0.15,       // damping, angleDamping, gravityScale, particleCone (narrow), fadeRate  
+  0.1, false, true, true, 1e9  // randomness (low), collide, additive, colorLinear, renderOrder  
+);
+    } else {
+      // No valid path → clear marker
+      p.destinationMarker = null;
+      p.markerAlpha = 0;
+    }
   }
 
-  // Handle keyboard input
+  // Keyboard input
   const keyMove =
     keyIsDown('KeyW') || keyIsDown('ArrowUp') ||
     keyIsDown('KeyS') || keyIsDown('ArrowDown') ||
@@ -26,15 +66,13 @@ export function handlePlayerMovement(p) {
   if (keyIsDown('KeyA') || keyIsDown('ArrowLeft')) move.x -= 1;
   if (keyIsDown('KeyD') || keyIsDown('ArrowRight')) move.x += 1;
 
-  // Path following (curved corners)
   const feet = p.pos.add(p.feetOffset);
+
+  // 🟢 Smooth path navigation
   if (!keyMove && p.path.length) {
-    let next = p.path[0];
-    const prev = feet;
     const next1 = p.path[0];
     const next2 = p.path[1] || next1;
-
-    const dirA = next1.subtract(prev);
+    const dirA = next1.subtract(feet);
     const dirB = next2.subtract(next1);
     const lenA = dirA.length(), lenB = dirB.length();
     const normA = lenA ? dirA.scale(1 / lenA) : vec2(0, 0);
@@ -43,7 +81,6 @@ export function handlePlayerMovement(p) {
     const t = clamp(1 - (distToNext / p.smoothBlendDist), 0, 1);
     const curveDir = normA.scale(1 - t).add(normB.scale(t));
     const blendedNext = next1.add(curveDir.scale(0.5 * p.smoothBlendDist));
-
     const delta = blendedNext.subtract(feet);
     const dist = delta.length();
 
@@ -55,11 +92,11 @@ export function handlePlayerMovement(p) {
     }
   }
 
+  // 🔶 Movement + animation state
   const isMoving = (move.x !== 0 || move.y !== 0);
   const newState = isMoving ? 'walk' : 'idle';
   const oldDirection = p.direction;
   let newDir = oldDirection;
-
   const stepDist = p.speed * timeDelta * 60;
   p.shadowTarget = isMoving ? 1.15 : 1.0;
   p.shadowScale += (p.shadowTarget - p.shadowScale) * clamp(timeDelta * p.shadowLerp, 0, 1);
@@ -74,7 +111,6 @@ export function handlePlayerMovement(p) {
         p.pos = nextFeet.subtract(p.feetOffset);
       else
         p.path = [];
-
       const ang = Math.atan2(-move.y, move.x);
       newDir = angleToDir(ang);
     }
@@ -88,6 +124,25 @@ export function handlePlayerMovement(p) {
     p.frameIndex = 0;
     p.frameTimer = 0;
     p.currentAnimKey = `${newState}_${newDir + 1}`;
+  }
+
+  // 🟡 Marker fade-out and emitter cleanup
+  if (p.destinationMarker && p.path.length === 0) {
+    const distToMarker = feet.distance(p.destinationMarker);
+    if (distToMarker < p.reachThreshold) {
+      p.markerAlpha -= timeDelta * 3;
+      if (p.markerAlpha <= 0) {
+        p.destinationMarker = null;
+        p.markerAlpha = 0;
+
+        // Stop and remove emitter
+        if (p.markerEmitter) {
+          p.markerEmitter.emitRate = 0;
+          p.markerEmitter.emitTime = 0.4; // allow short fade-out
+          p.markerEmitter = null;
+        }
+      }
+    }
   }
 }
 

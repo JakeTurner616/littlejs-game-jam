@@ -1,8 +1,12 @@
 // src/character/playerPathfinding.js
 'use strict';
-import { vec2, Color } from 'littlejsengine';
-import { clamp } from 'littlejsengine';
+import { vec2, Color, clamp } from 'littlejsengine';
 
+/**
+ * buildSmartPath(player, target)
+ * ------------------------------
+ * A* pathfinder that links pre-defined maneuver nodes.
+ */
 export function buildSmartPath(p, target) {
   const feetStart = p.pos.add(p.feetOffset);
   const feetGoal = target;

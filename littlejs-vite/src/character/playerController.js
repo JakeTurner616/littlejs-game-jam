@@ -1,4 +1,4 @@
-// src/character/PlayerController.js
+// src/character/playerController.js
 'use strict';
 import {
   vec2, keyIsDown, timeDelta, Color, setCameraPos,
@@ -36,31 +36,41 @@ export class PlayerController {
       reachThreshold: 0.1,
       smoothBlendDist: 0.25,
       debugLinks: [],
-      debugNodes: []
+      debugNodes: [],
+
+      // 🟡 Marker state
+      destinationMarker: null,
+      markerAlpha: 0,
+      markerScale: 1,
+      markerTimer: 0
     });
   }
-async loadAllAnimations() {
-  await import('./playerAnimation.js').then(mod => mod.loadAllAnimations(this));
-}
+
+  /*────────────────────────── Initialization ──────────────────────────*/
+  async loadAllAnimations() {
+    await import('./playerAnimation.js').then(mod => mod.loadAllAnimations(this));
+  }
+
   async initAnimations() { await loadAllAnimations(this); }
 
   setColliders(c) { this.mapColliders = c || []; }
 
+  /*────────────────────────── Update ──────────────────────────*/
   update() {
     if (!this.ready) return;
-
-    // movement and animation update
     handlePlayerMovement(this);
     handlePlayerAnimation(this);
-
     if (!window.scene?.cinematicMode)
       setCameraPos(this.pos);
   }
 
+  /*────────────────────────── Draw ──────────────────────────*/
   draw() {
     if (!this.ready) return;
     const f = this.currentFrames()[this.frameIndex];
     if (!f) return;
+
+
 
     const tex = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), this.currentTextureIndex());
     const s = vec2((f.w / this.ppu) * 256 / 504, (f.h / this.ppu) * 256 / 504);
@@ -73,12 +83,17 @@ async loadAllAnimations() {
       drawLine(this.path[i], this.path[i + 1], 0.03, new Color(0, 1, 0, 0.4));
   }
 
+  /*────────────────────────── Shadow ──────────────────────────*/
   drawShadow() {
     const p = this.pos.add(this.feetOffset);
     const r = 0.3 * this.shadowScale;
     drawEllipse(p, vec2(r * 1.8, r * 0.9), new Color(0, 0, 0, 0.25), 0);
   }
 
+  /*────────────────────────── Marker ──────────────────────────*/
+
+
+  /*────────────────────────── Helpers ──────────────────────────*/
   buildSmartPath(target) { return buildSmartPath(this, target); }
 
   pointInsideAnyCollider(p) { return pointInsideAnyCollider(this.mapColliders, p); }
