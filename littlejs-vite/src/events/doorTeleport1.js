@@ -1,16 +1,17 @@
 // src/events/doorTeleport1.js
 'use strict';
-import { keyWasPressed } from 'littlejsengine';
+import { keyWasPressed, vec2 } from 'littlejsengine';
+import { isoToWorld } from '../map/isoMath.js';
 import { audioManager } from '../audio/AudioManager.js';
 
 export const event = {
   id: 'door_teleport_1',
-  description: 'Two-phase event: monologue intro → interactive dialogue',
+  description: 'Two-phase event: monologue intro → interactive dialogue (tile-based teleport)',
   async execute(scene, player) {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
 
-    // Wait for any previous text to finish
+    // Wait for any visible monologue to finish
     await new Promise((resolve) => {
       const check = () => {
         if (!scene.dialog.visible) return resolve();
@@ -61,7 +62,7 @@ export const event = {
           // 🔑 Door opening logic
           scene.dialog.visible = false;
 
-          // 🎧 Play the door open sound *right as it opens*
+          // 🎧 Play door open sound
           try {
             audioManager.playSound('door_open', null, 1.0);
             console.log('[doorTeleport1] Door open sound played');
@@ -69,10 +70,26 @@ export const event = {
             console.warn('[doorTeleport1] Failed to play door sound:', err);
           }
 
-          // 🚪 Move the player inside
-          player.pos.set(11.14, -11.04);
+          // 🚪 Convert tile-space → world-space (aligned to player feet)
+          const { mapData, TILE_W, TILE_H } = scene.map;
+          const { width, height } = mapData;
 
-          // 🟣 Switch lighting to indoor mode *here* (not in GameScene)
+          // ✅ Target tile + facing direction
+          const targetC = 10.18;
+          const targetR = 11.98;
+          const targetDir = 4; // SW (0–7 range)
+
+          const worldFeet = isoToWorld(targetC, targetR, width, height, TILE_W, TILE_H);
+          player.pos = worldFeet.subtract(player.feetOffset); // align feet perfectly
+          player.direction = targetDir;
+          player.state = 'idle';
+
+          console.log(
+            `%c[doorTeleport1] Teleport to TILE (c=${targetC}, r=${targetR}) DIR=${targetDir}`,
+            'color:#6ff;font-weight:bold;'
+          );
+
+          // 🕯️ Switch to indoor lighting
           if (scene.lighting) {
             scene.lighting.setRainMode('background');
             scene.lighting.setLightningMode('background');
@@ -80,7 +97,7 @@ export const event = {
             console.log('[doorTeleport1] Switched to indoor lighting (background mode)');
           }
 
-          // 🕯️ Continue monologue
+          // 📜 Continue monologue
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +

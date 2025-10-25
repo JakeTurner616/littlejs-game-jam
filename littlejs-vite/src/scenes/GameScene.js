@@ -98,7 +98,18 @@ export class GameScene {
       this.lighting.triggerLightning(i);
       console.log(`[Lighting] Manual trigger (intensity ${i})`);
     };
+        window.printPlayerPosition = () => {
+      if (!this.player || !this.map) return console.warn('[printPlayerPosition] No player or map loaded');
+      const { mapData, TILE_W, TILE_H } = this.map;
+      const { width, height } = mapData;
+      const feet = this.player.pos.add(this.player.feetOffset);
+      const tile = worldToIso(feet.x, feet.y, width, height, TILE_W, TILE_H);
 
+      console.log(
+        `%c[Player] WORLD (x=${feet.x.toFixed(2)}, y=${feet.y.toFixed(2)}) → TILE (c=${tile.x.toFixed(2)}, r=${tile.y.toFixed(2)})  `,
+        'color:#6ff;font-weight:bold;'
+      );
+    };
     console.log(`[GameScene] Player spawn tile: c=${this.spawnC}, r=${this.spawnR}`);
     this.ready = true;
   }
