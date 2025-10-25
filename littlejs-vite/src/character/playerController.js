@@ -1,8 +1,8 @@
-// src/character/playerController.js — fixed to respect cinematicMode flag
+// src/character/playerController.js — no particle logic
 'use strict';
 import {
   vec2, TileInfo, drawTile, keyIsDown, timeDelta, Color, setCameraPos,
-  drawRect, ParticleEmitter, drawEllipse, clamp
+  drawRect, drawEllipse, clamp
 } from 'littlejsengine';
 
 /*
@@ -10,7 +10,7 @@ import {
   -----------------------------------------------
   ✅ Reads 394×504 / 394×502 sprites
   ✅ Auto-scales to match ~256×256 world height
-  ✅ Adds footstep particles and dynamic shadow
+  ✅ Dynamic shadow
   ✅ Frame-rate independent movement speed fix
   ✅ Respects cinematic camera override
 */
@@ -22,7 +22,7 @@ export class PlayerController {
     this.ppu = ppu;
 
     this.tileRatio = 0.5;
-    this.speed = 4 / this.ppu; // base world-units per second
+    this.speed = 2.7 / this.ppu;
     this.direction = 0;
     this.state = 'idle';
     this.frameIndex = 0;
@@ -35,9 +35,6 @@ export class PlayerController {
 
     this.mapColliders = [];
     this.feetOffset = vec2(0, 0.45);
-
-    this.footstepTimer = 0;
-    this.footstepInterval = 0.18;
 
     this.shadowScale = 1.0;
     this.shadowTargetScale = 1.0;
@@ -76,13 +73,13 @@ export class PlayerController {
   update() {
     if (!this.ready) return;
 
-  // 🔒 Prevent player input when frozen (during dialogues)
-  if (this.frozen) {
-    setCameraPos(this.pos);
-    return;
-  }
+    // 🔒 Prevent player input when frozen (during dialogues)
+    if (this.frozen) {
+      setCameraPos(this.pos);
+      return;
+    }
 
-  const move = vec2(0, 0);
+    const move = vec2(0, 0);
     if (keyIsDown('KeyW') || keyIsDown('ArrowUp')) move.y += 1;
     if (keyIsDown('KeyS') || keyIsDown('ArrowDown')) move.y -= 1;
     if (keyIsDown('KeyA') || keyIsDown('ArrowLeft')) move.x -= 1;
@@ -110,18 +107,14 @@ export class PlayerController {
         const feet = nextPos.add(this.feetOffset);
         if (!this.pointInsideAnyCollider(feet)) {
           this.pos = nextPos;
-          this.footstepTimer += timeDelta;
-          if (this.footstepTimer >= this.footstepInterval) {
-            this.footstepTimer = 0;
-            this.emitFootstepParticle(move);
-          }
-        } else this.vel.set(0, 0);
+        } else {
+          this.vel.set(0, 0);
+        }
         const angle = Math.atan2(-move.y, move.x);
         newDir = this.angleToDir(angle);
       }
     } else {
       this.vel.set(0, 0);
-      this.footstepTimer = 0;
     }
 
     // ✅ Prevent camera override during cinematic mode
@@ -148,29 +141,6 @@ export class PlayerController {
       this.frameTimer -= currentDur;
       this.frameIndex = (this.frameIndex + 1) % frames.length;
     }
-  }
-
-  emitFootstepParticle(moveDir = vec2(0, 0)) {
-    const feetPos = this.pos.add(this.feetOffset);
-    const speed = 0.01 + Math.random() * 0.03;
-    const angle = Math.atan2(-moveDir.y, moveDir.x) + (Math.random() - 0.5) * 0.3;
-    const sidewaysOffset = vec2(Math.sin(angle) * 0.02, -Math.cos(angle) * 0.02);
-    const pos = feetPos.add(sidewaysOffset);
-
-    new ParticleEmitter(
-      pos, angle,
-      0.05, 0, 0, 0.4,
-      undefined,
-      new Color(0.3, 0.25, 0.2, 0.35),
-      new Color(0.4, 0.35, 0.3, 0.25),
-      new Color(0.3, 0.25, 0.2, 0),
-      new Color(0.4, 0.35, 0.3, 0),
-      0.25 + Math.random() * 0.1,
-      0.02, 0.05,
-      speed, 0,
-      0.9, 0.9, 0, 0.4, 0.15,
-      0.2, false, false, true, -1
-    ).emitParticle();
   }
 
   drawShadow() {

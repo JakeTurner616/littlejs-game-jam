@@ -88,7 +88,10 @@ export const event = {
             `%c[doorTeleport1] Teleport to TILE (c=${targetC}, r=${targetR}) DIR=${targetDir}`,
             'color:#6ff;font-weight:bold;'
           );
-
+          if (scene.fog) {
+            scene.fog.fadeOut();
+            console.log('[doorTeleport1] Fog fade-out triggered');
+          }
           // 🕯️ Switch to indoor lighting
           if (scene.lighting) {
             scene.lighting.setRainMode('background');
