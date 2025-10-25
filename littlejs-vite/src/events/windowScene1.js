@@ -81,7 +81,7 @@ export const event = {
               }
             }
 
-            if (i % 8 === 0) player.emitFootstepParticle(vec2(1, 1));
+            
             await new Promise((r) => setTimeout(r, delay));
           }
 
