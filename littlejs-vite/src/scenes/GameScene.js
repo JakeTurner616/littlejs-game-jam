@@ -15,7 +15,7 @@ import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld, worldToIso } from '../map/isoMath.js';
 
-setDebugMapEnabled(true);
+setDebugMapEnabled(false);
 
 export class GameScene {
   constructor(skipInit = false) {

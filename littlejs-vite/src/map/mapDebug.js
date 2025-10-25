@@ -10,8 +10,8 @@ let currentOffsetIndex = 0;
 let availableOffsets = [0];
 
 /**
- * Renders grid, hover highlight, player marker, and colliders.
- * (Trigger polygons are now drawn from GameScene instead.)
+ * Renders grid, hover highlight, player marker, colliders,
+ * and (NEW) object + wall depth polygons.
  */
 export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENABLED = true) {
   if (!DEBUG_ENABLED || !map.mapData) return;
@@ -21,12 +21,14 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const halfW = TILE_W / 2;
   const halfH = TILE_H / 2;
 
+  // collect all offset levels
   if (availableOffsets.length === 1 && floorOffsets) {
     const values = Array.from(floorOffsets.values());
     const unique = [0, ...values.filter((v, i, a) => a.indexOf(v) === i)];
     availableOffsets = unique.sort((a, b) => a - b);
   }
 
+  // keyboard cycle
   if (keyWasPressed('KeyQ')) {
     currentOffsetIndex = (currentOffsetIndex - 1 + availableOffsets.length) % availableOffsets.length;
     console.log('[MapDebug] Switched to offset', availableOffsets[currentOffsetIndex]);
@@ -39,6 +41,9 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
   const floorOffsetWorld = availableOffsets[currentOffsetIndex] || 0;
   const anchorOffsetY = ((4.0) - TILE_H) / 2 * 2;
 
+  /*───────────────────────────────────────────────
+    GRID + HOVER
+  ────────────────────────────────────────────────*/
   const gridColor = rgb(0, 1, 0);
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
@@ -74,7 +79,9 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
     }
   }
 
-  // COLLIDERS
+  /*───────────────────────────────────────────────
+    COLLIDERS
+  ────────────────────────────────────────────────*/
   if (colliders?.length) {
     const red = rgb(1, 0, 0);
     for (const c of colliders)
@@ -82,6 +89,40 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
         drawLine(c.pts[i], c.pts[(i + 1) % c.pts.length], 0.06, red);
   }
 
+  /*───────────────────────────────────────────────
+    DEPTH POLYGONS (orange) + DYNAMIC PLANE (blue)
+  ────────────────────────────────────────────────*/
+  const objectSys = map._objectSystemRef;
+  if (objectSys?.depthPolygons?.length) {
+    const orange = new Color(1, 0.6, 0, 0.9);
+    for (const poly of objectSys.depthPolygons) {
+      const pts = poly.polyPts;
+      for (let i = 0; i < pts.length; i++)
+        drawLine(pts[i], pts[(i + 1) % pts.length], 0.04, orange);
+    }
+  }
+
+  // Blue dynamic plane — visualize getPolygonDepthYAtX() projection
+  if (objectSys?.getDepthFunc && playerPos) {
+    const func = objectSys.getDepthFunc();
+    const feet = playerPos.add(playerFeetOffset);
+    const blue = new Color(0.2, 0.6, 1, 0.9);
+
+    for (const poly of objectSys.depthPolygons) {
+      const polyY = func(feet, poly.polyPts);
+      if (polyY !== null)
+        drawLine(
+          vec2(feet.x - 0.15, polyY),
+          vec2(feet.x + 0.15, polyY),
+          0.05,
+          blue
+        );
+    }
+  }
+
+  /*───────────────────────────────────────────────
+    CLICK LOG
+  ────────────────────────────────────────────────*/
   if (mouseWasPressed(0)) {
     console.log(
       `%c[MapDebug] Clicked tile → World (X:${worldMouse.x.toFixed(2)}, Y:${worldMouse.y.toFixed(2)})`,
@@ -98,7 +139,7 @@ export function renderMapDebug(map, playerPos, playerFeetOffset, PPU, DEBUG_ENAB
 }
 
 /*───────────────────────────────────────────────
-  DEPTH POLYGON DEBUG HELPER (needed by mapRenderer)
+  DEPTH POLYGON DEBUG HELPER (used by mapRenderer)
 ───────────────────────────────────────────────*/
 export function drawDepthDebug(polyObj, playerFeet, getPolygonDepthYAtX) {
   if (!polyObj?.worldPoly) return;
