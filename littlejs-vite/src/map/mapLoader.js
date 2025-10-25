@@ -1,7 +1,14 @@
-// src/map/mapLoader.js  ✅ optimized without feature loss
+// src/map/mapLoader.js — ✅ ManeuverNodes with Auto-Connection Fallback
 import { vec2, TextureInfo, TileInfo, textureInfos } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
 
+/**
+ * Load a Tiled JSON map and convert into game-ready world data
+ * ------------------------------------------------------------
+ * • Handles tile + object layers
+ * • Builds collider polygons and event polygons
+ * • Loads object sprites and maneuver nodes (with auto-connections)
+ */
 export async function loadTiledMap(MAP_PATH, PPU) {
   const mapData = await fetchJSON(MAP_PATH);
   const TILE_W = mapData.tilewidth / PPU;
@@ -15,7 +22,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   const rawImages = Object.create(null);
   const tileInfos = Object.create(null);
 
-  // prefetch all images concurrently
+  // prefetch all tiles
   const tiles = tilesetDef.tiles || [];
   const imagePromises = tiles.map(t => {
     const gid = t.id + firstgid;
@@ -45,10 +52,14 @@ export async function loadTiledMap(MAP_PATH, PPU) {
   const colliders = [];
   const eventPolygons = [];
   const objectSprites = [];
+  let outManeuverNodes = [];
 
   for (const layer of objectLayers) {
     const { name, objects = [] } = layer;
 
+    // ──────────────────────────────────────────────
+    // Collision polygons
+    // ──────────────────────────────────────────────
     if (name === 'Collision') {
       for (const obj of objects) {
         const poly = obj.polygon;
@@ -59,7 +70,11 @@ export async function loadTiledMap(MAP_PATH, PPU) {
         });
         colliders.push({ id: obj.id, name: obj.name, pts: cleanAndInflatePolygon(pts, 0.002) });
       }
-    } 
+    }
+
+    // ──────────────────────────────────────────────
+    // Event polygons
+    // ──────────────────────────────────────────────
     else if (name === 'EventPolygons') {
       for (const obj of objects) {
         const poly = obj.polygon;
@@ -71,7 +86,11 @@ export async function loadTiledMap(MAP_PATH, PPU) {
         const eventId = obj.properties?.find(p => p.name === 'eventId')?.value || null;
         eventPolygons.push({ id: obj.id, name: obj.name || `event_${obj.id}`, pts, eventId });
       }
-    } 
+    }
+
+    // ──────────────────────────────────────────────
+    // Object sprites
+    // ──────────────────────────────────────────────
     else if (name === 'ObjectSprites') {
       for (const obj of objects) {
         const spriteName = obj.properties?.find(p => p.name === 'spriteName')?.value;
@@ -79,8 +98,39 @@ export async function loadTiledMap(MAP_PATH, PPU) {
         objectSprites.push({ name: spriteName, x: obj.x, y: obj.y, properties: obj.properties || [] });
       }
     }
+
+    // ──────────────────────────────────────────────
+    // Maneuver nodes (for pathfinding)
+    // ──────────────────────────────────────────────
+else if (name === 'ManeuverNodes') {
+  const maneuverNodes = [];
+  for (const obj of objects) {
+    const id = obj.name || `node_${obj.id}`;
+    // same coordinate math as colliders
+    const w = tmxPxToWorld(obj.x, obj.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
+    const pos = vec2(w.x, w.y - TILE_H / 2); // ✅ anchor fix for proper floor alignment
+    const connections = obj.properties?.find(p => p.name === 'connections')?.value
+      ?.split(',').map(s => s.trim()).filter(Boolean) || [];
+    maneuverNodes.push({ id, pos, connections });
   }
 
+  // ✅ Auto-connect nearby nodes if none explicitly set
+  const AUTO_RANGE = 2.0; // world-space units
+  for (const n of maneuverNodes) {
+    if (!n.connections.length) {
+      n.connections = maneuverNodes
+        .filter(o => o !== n && n.pos.distance(o.pos) < AUTO_RANGE)
+        .map(o => o.id);
+    }
+  }
+
+  outManeuverNodes = maneuverNodes;
+}
+  }
+
+  // ──────────────────────────────────────────────
+  // Return assembled map object
+  // ──────────────────────────────────────────────
   return {
     mapData,
     rawImages,
@@ -94,6 +144,7 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     TILE_H,
     floorOffsets,
     wallOffsets,
+    maneuverNodes: outManeuverNodes,
   };
 }
 
@@ -109,13 +160,13 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
   }
   if (clean.length < 3) return clean;
 
-  // compute signed area quickly
+  // ensure CCW orientation
   let area = 0;
   for (let i = 0, j = clean.length - 1; i < clean.length; j = i++)
     area += (clean[j].x - clean[i].x) * (clean[j].y + clean[i].y);
   if (area > 0) clean.reverse();
 
-  // center + inflate
+  // inflate from center
   const cx = clean.reduce((s, p) => s + p.x, 0) / clean.length;
   const cy = clean.reduce((s, p) => s + p.y, 0) / clean.length;
   const center = vec2(cx, cy);
@@ -126,6 +177,7 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
   });
 }
 
+/*───────────────────────────────────────────────*/
 const fetchJSON = url => fetch(url).then(r => {
   if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
   return r.json();
