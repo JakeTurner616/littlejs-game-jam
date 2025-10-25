@@ -7,17 +7,21 @@ import { isoToWorld } from '../map/isoMath.js';
 let WITCH_CACHE = null;
 
 /**
- * WitchManager — handles all witch entity lifecycle
- * -------------------------------------------------
- * ✅ Spawns witch with synchronized lightning flash
- * ✅ Caches animation frames for performance
- * ✅ Supports cinematic camera pan
+ * WitchManager — manages all witch spawns via triggers
+ * ---------------------------------------------------
+ * ✅ Trigger-based only (no auto spawn)
+ * ✅ Always uses tile coordinates (defaults: c=10.73, r=6.27)
+ * ✅ Compatible with lightning + camera cinematic
  */
 export class WitchManager {
   constructor(scene) {
     this.scene = scene;
     this.entitiesBelow = [];
     this.entitiesAbove = [];
+
+    // fallback spawn coordinates (tile-space)
+    this.defaultC = 10.73;
+    this.defaultR = 6.27;
   }
 
   async preload() {
@@ -31,64 +35,55 @@ export class WitchManager {
     };
   }
 
+  /**
+   * Trigger-based spawn
+   * If trigger properties lack spawn_c/spawn_r, uses fixed tile coordinates.
+   */
   spawn(trigger) {
-    if (!WITCH_CACHE) return this.spawnFull(trigger);
+    if (!this.scene?.map) {
+      console.warn('[WitchManager] Missing map context.');
+      return;
+    }
 
-    const props = trigger.properties || {};
+    const props = trigger?.properties || {};
     const { TILE_W, TILE_H, mapData } = this.scene.map;
     const { width, height } = mapData;
 
-    let spawnPos = trigger.pos;
-    if (props.spawn_c !== undefined && props.spawn_r !== undefined)
-      spawnPos = isoToWorld(+props.spawn_c, +props.spawn_r, width, height, TILE_W, TILE_H);
-    else if (props.spawn_x !== undefined && props.spawn_y !== undefined)
-      spawnPos = vec2(+props.spawn_x, +props.spawn_y);
+    // 🔹 Use trigger-provided tile coords if present, else fallback
+    const c = props.spawn_c != null ? +props.spawn_c : this.defaultC;
+    const r = props.spawn_r != null ? +props.spawn_r : this.defaultR;
 
+    const spawnPos = isoToWorld(c, r, width, height, TILE_W, TILE_H);
     const direction = +props.direction || 0;
+
     const witch = new WitchEntity(spawnPos, direction, this.scene.player.ppu, 'below');
-    witch.frames = WITCH_CACHE.frames;
-    witch.durations = WITCH_CACHE.durations;
-    witch.texIndex = WITCH_CACHE.texIndex;
-    witch.ready = true;
+
+    if (WITCH_CACHE) {
+      witch.frames = WITCH_CACHE.frames;
+      witch.durations = WITCH_CACHE.durations;
+      witch.texIndex = WITCH_CACHE.texIndex;
+      witch.ready = true;
+    } else {
+      witch.load().then(() => (witch.ready = true));
+    }
 
     this.entitiesBelow.push(witch);
     this.scene.camera.startCinematic(spawnPos, 170);
 
-    // ⚡ Trigger lightning flash when witch spawns
+    // ⚡ Trigger lightning flash on spawn
     if (this.scene.lighting) {
       this.scene.lighting.triggerLightning();
-      // optional: add subtle delay and second flash for eerie double strobe
       setTimeout(() => this.scene.lighting.triggerLightning(), 180);
     }
-  }
 
-  spawnFull(trigger) {
-    const props = trigger.properties || {};
-    const { TILE_W, TILE_H, mapData } = this.scene.map;
-    const { width, height } = mapData;
-
-    let spawnPos = trigger.pos;
-    if (props.spawn_c !== undefined && props.spawn_r !== undefined)
-      spawnPos = isoToWorld(+props.spawn_c, +props.spawn_r, width, height, TILE_W, TILE_H);
-    else if (props.spawn_x !== undefined && props.spawn_y !== undefined)
-      spawnPos = vec2(+props.spawn_x, +props.spawn_y);
-
-    const direction = +props.direction || 0;
-    const witch = new WitchEntity(spawnPos, direction, this.scene.player.ppu, 'below');
-    witch.load().then(() => {
-      this.entitiesBelow.push(witch);
-      // ⚡ Flash lightning after texture is ready
-      if (this.scene.lighting) {
-        this.scene.lighting.triggerLightning();
-        setTimeout(() => this.scene.lighting.triggerLightning(), 180);
-      }
-    });
+    console.log(
+      `%c[WitchManager] Witch triggered → TILE (c=${c}, r=${r}) | WORLD (${spawnPos.x.toFixed(2)}, ${spawnPos.y.toFixed(2)})`,
+      'color:#f6f;font-weight:bold;'
+    );
   }
 
   update(dt) {
-    for (const e of [...this.entitiesBelow, ...this.entitiesAbove]) {
-      e.update(dt);
-    }
+    for (const e of [...this.entitiesBelow, ...this.entitiesAbove]) e.update(dt);
     this.entitiesBelow = this.entitiesBelow.filter(e => !e.dead);
   }
 

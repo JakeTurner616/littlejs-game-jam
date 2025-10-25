@@ -9,9 +9,9 @@ import {
   textureInfos,
   keyIsDown,
   keyWasPressed,
-  drawRect,
+  drawRect
 } from 'littlejsengine';
-import { worldToIso } from '../map/isoMath.js';
+import { worldToIso, isoToWorld } from '../map/isoMath.js';
 
 export class WitchEntity {
   constructor(pos = vec2(0, 0), direction = 0, ppu = 128, renderLayer = 'above') {
@@ -29,8 +29,11 @@ export class WitchEntity {
     this.fadeSpeed = 0.015;
     this.fading = false;
     this.dead = false;
+
+    // debug mode
     this.debugEnabled = false;
-    this.debugSpeed = 0.02;
+    this.debugSpeed = 0.025;
+    this.tileRatio = 0.5;
   }
 
   async #loadTextureAsIndex(pngPath) {
@@ -53,8 +56,8 @@ export class WitchEntity {
     const res = await fetch(jsonPath);
     if (!res.ok) throw new Error(`Failed to load witch JSON: ${jsonPath}`);
     const data = await res.json();
-    this.frames = (data.frames || []).map((f) => f.frame);
-    this.durations = (data.frames || []).map((f) => (f.duration ?? 33) / 1000);
+    this.frames = (data.frames || []).map(f => f.frame);
+    this.durations = (data.frames || []).map(f => (f.duration ?? 33) / 1000);
     this.texIndex = await this.#loadTextureAsIndex(pngPath);
     this.ready = true;
   }
@@ -66,12 +69,16 @@ export class WitchEntity {
 
   update(dt = 1 / 60) {
     if (!this.ready || !this.frames.length) return;
+
+    // animate frames
     this.frameTimer += dt;
     const dur = this.durations[this.frameIndex] || 1 / 30;
     if (this.frameTimer >= dur) {
       this.frameTimer -= dur;
       this.frameIndex = (this.frameIndex + 1) % this.frames.length;
     }
+
+    // fade logic
     if (this.fading) {
       this.alpha -= this.fadeSpeed * (dt * 60);
       if (this.alpha <= 0.01) {
@@ -79,22 +86,45 @@ export class WitchEntity {
         this.dead = true;
       }
     }
+
+    // 🔹 Debug move system
     if (this.debugEnabled) {
       const move = vec2(0, 0);
-      if (keyIsDown('ArrowUp')) move.y += 1;
-      if (keyIsDown('ArrowDown')) move.y -= 1;
-      if (keyIsDown('ArrowLeft')) move.x -= 1;
-      if (keyIsDown('ArrowRight')) move.x += 1;
-      if (move.x || move.y) {
-        this.pos.x += move.x * this.debugSpeed;
-        this.pos.y += move.y * this.debugSpeed;
+      if (keyIsDown('ArrowUp') || keyIsDown('KeyW')) move.y += 1;
+      if (keyIsDown('ArrowDown') || keyIsDown('KeyS')) move.y -= 1;
+      if (keyIsDown('ArrowLeft') || keyIsDown('KeyA')) move.x -= 1;
+      if (keyIsDown('ArrowRight') || keyIsDown('KeyD')) move.x += 1;
+
+      const isMoving = move.x || move.y;
+      if (isMoving) {
+        const isoMove = vec2(move.x, move.y * this.tileRatio);
+        const mag = Math.hypot(isoMove.x, isoMove.y);
+        if (mag > 0) {
+          const step = isoMove.scale(this.debugSpeed / mag);
+          this.pos = this.pos.add(step);
+        }
       }
+
+      // 🔹 Press P → print both world + tile coordinates
       if (keyWasPressed('KeyP')) {
-        const iso = worldToIso(this.pos.x, this.pos.y, 16, 16, 1, 1);
+        const scene = window.scene;
+        if (!scene?.map) {
+          console.warn('[WitchEntity] Scene or map missing for coordinate conversion');
+          return;
+        }
+
+        const { mapData, TILE_W, TILE_H } = scene.map;
+        const { width, height } = mapData;
+        const iso = worldToIso(this.pos.x, this.pos.y, width, height, TILE_W, TILE_H);
+
         console.log(
-          `%c[WitchEntity] Position: X:${this.pos.x.toFixed(2)}, Y:${this.pos.y.toFixed(
-            2
-          )} | Tile C:${Math.floor(iso.x)}, R:${Math.floor(iso.y)}`,
+          `%c[WitchEntity] WORLD (${this.pos.x.toFixed(2)}, ${this.pos.y.toFixed(2)}) → TILE (c=${iso.x.toFixed(2)}, r=${iso.y.toFixed(2)})`,
+          'color:#f6f;font-weight:bold;'
+        );
+
+        // helper line for easy spawn copying
+        console.log(
+          `%cspawn_c=${Math.round(iso.x)}, spawn_r=${Math.round(iso.y)}`,
           'color:#6ff;font-weight:bold;'
         );
       }
@@ -103,29 +133,37 @@ export class WitchEntity {
 
   draw() {
     if (!this.ready || this.texIndex < 0 || !this.frames.length || this.alpha <= 0) return;
+
     const f = this.frames[this.frameIndex];
     const scaleY = 256 / (f.h || 498);
     const frameSize = vec2((f.w / this.ppu) * scaleY, (f.h / this.ppu) * scaleY);
     const tile = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), this.texIndex);
     const tint = new Color(1, 1, 1, this.alpha);
     drawTile(this.pos.add(vec2(0, 0.5)), frameSize, tile, tint, 0, 0);
+
     if (this.debugEnabled)
-      drawRect(this.pos, vec2(0.05, 0.05), new Color(1, 0.5, 0, 0.8));
+      drawRect(this.pos, vec2(0.06, 0.06), new Color(1, 0.5, 0, 0.9));
   }
 }
 
+/*───────────────────────────────────────────────
+  GLOBAL DEBUG TOGGLE
+───────────────────────────────────────────────*/
 if (typeof window !== 'undefined') {
   window.DEBUG_WITCH = false;
   window.toggleWitchDebug = () => {
     window.DEBUG_WITCH = !window.DEBUG_WITCH;
     if (window.scene) {
-      for (const w of [...(scene.entitiesAbove || []), ...(scene.entitiesBelow || [])]) {
+      const all = [
+        ...(scene.witchManager?.entitiesAbove || []),
+        ...(scene.witchManager?.entitiesBelow || [])
+      ];
+      for (const w of all)
         if (w instanceof WitchEntity) w.debugEnabled = window.DEBUG_WITCH;
-      }
     }
     console.log(
-      `%c[WitchEntity] Debug mode → ${window.DEBUG_WITCH ? 'ON (Use Arrows + P)' : 'OFF'}`,
-      'color:#6ff;font-weight:bold;'
+      `%c[WitchEntity] Debug → ${window.DEBUG_WITCH ? 'ON (move with arrows/WASD, press P to log coords)' : 'OFF'}`,
+      'color:#f6f;font-weight:bold;'
     );
   };
 }

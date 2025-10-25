@@ -1,6 +1,6 @@
 // src/scenes/GameScene.js
 'use strict';
-import { vec2, drawText, hsl } from 'littlejsengine';
+import { vec2, drawText, hsl, screenToWorld, mousePosScreen, mouseWasPressed } from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
@@ -13,6 +13,7 @@ import { ObjectSystem } from '../map/objectSystem.js';
 import { WitchManager } from '../character/WitchManager.js';
 import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
+import { isoToWorld, worldToIso } from '../map/isoMath.js';
 
 setDebugMapEnabled(true);
 
@@ -29,10 +30,12 @@ export class GameScene {
     this.camera = new CameraController();
     this.witchManager = new WitchManager(this);
 
-    // Auto-lightning timing
     this._thunderTimer = 0;
     this._nextThunderDelay = 0;
     this._lightningEnabled = true;
+
+    // For click-to-debug
+    this.debugClickEnabled = true;
   }
 
   async onEnter() {
@@ -40,27 +43,29 @@ export class GameScene {
     const MAP_PATH = '/assets/map/sample-iso.tmj';
     this.map = await loadTiledMap(MAP_PATH, PPU);
 
-    // Player setup
-    const PLAYER_SPAWN = vec2(8.92, -12.67);
+    const { mapData, TILE_W, TILE_H } = this.map;
+    const { width, height } = mapData;
+
+    // ✅ Stable tile-space spawn
+    this.spawnC = 6.91;
+    this.spawnR = 13.72;
+    const PLAYER_SPAWN = isoToWorld(this.spawnC, this.spawnR, width, height, TILE_W, TILE_H);
+
     this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
 
-    // Object system
     this.objects = new ObjectSystem(this.map, PPU);
     await this.objects.load();
 
-    // Polygon events
     this.events = new PolygonEventSystem(this.map, (poly) => {
       if (poly?.eventId && EventRegistry[poly.eventId])
         EventRegistry[poly.eventId].execute(this, this.player);
     });
 
-    // Preload sounds
     audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
     audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
 
-    // Object triggers
     this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
       if (trigger?.eventId === 'witch_spawn') {
         this.witchManager.spawn(trigger);
@@ -71,25 +76,20 @@ export class GameScene {
     });
     this.objectTriggers.loadFromMap();
 
-    // Camera
     this.camera.setTarget(this.player);
     this.camera.snapToTarget();
 
-    // Dialog box
     await this.dialog.loadFont();
     this.dialog.setMode('monologue');
     this.dialog.setText('Hello world.');
     this.dialog.visible = true;
 
-    // ✅ Lighting setup
     this.lighting.setRainMode('overlay');
     this.lighting.setLightningMode('overlay');
-    this.lighting.lightningEnabled = true; // <-- KEY FIX
+    this.lighting.lightningEnabled = true;
     this._scheduleNextLightning();
 
     await this.witchManager.preload();
-
-    // Music
     this._initAudio();
 
     // Dev helpers
@@ -99,12 +99,10 @@ export class GameScene {
       console.log(`[Lighting] Manual trigger (intensity ${i})`);
     };
 
+    console.log(`[GameScene] Player spawn tile: c=${this.spawnC}, r=${this.spawnR}`);
     this.ready = true;
   }
 
-  /*───────────────────────────────────────────────
-    AUDIO INITIALIZATION
-  ────────────────────────────────────────────────*/
   _initAudio() {
     try {
       audioManager.playMusic('/assets/audio/sh2-Forest-Custom-Cover-with-thunder.ogg', 0.35, true);
@@ -114,11 +112,7 @@ export class GameScene {
     }
   }
 
-  /*───────────────────────────────────────────────
-    LIGHTNING LOGIC
-  ────────────────────────────────────────────────*/
   _scheduleNextLightning() {
-    // realistic time between flashes
     const intervals = [6, 8, 10, 12, 14, 16, 18];
     this._nextThunderDelay = intervals[(Math.random() * intervals.length) | 0];
     this._thunderTimer = 0;
@@ -126,7 +120,6 @@ export class GameScene {
 
   _updateLightning(dt) {
     if (!this._lightningEnabled) return;
-
     this._thunderTimer += dt;
     if (this._thunderTimer >= this._nextThunderDelay) {
       console.log('[Lighting] Auto lightning triggered!');
@@ -136,17 +129,35 @@ export class GameScene {
     }
   }
 
-  /*───────────────────────────────────────────────
-    UPDATE LOOP
-  ────────────────────────────────────────────────*/
   isLoaded() { return this.ready && this.player?.ready && this.map; }
+
+  /*───────────────────────────────────────────────
+    Click-to-Debug
+  ────────────────────────────────────────────────*/
+  _handleClickDebug() {
+    if (!this.debugClickEnabled || !mouseWasPressed(0) || !this.map) return;
+
+    const world = screenToWorld(mousePosScreen);
+    const { mapData, TILE_W, TILE_H } = this.map;
+    const { width, height } = mapData;
+    const tile = worldToIso(world.x, world.y, width, height, TILE_W, TILE_H);
+
+    console.log(
+      `%c[DEBUG] Click → tile (c=${tile.x.toFixed(2)}, r=${tile.y.toFixed(2)})  world (${world.x.toFixed(2)}, ${world.y.toFixed(2)})`,
+      'color:#6f6;font-weight:bold;'
+    );
+    console.log(
+      `%c[DEBUG] Player spawn tile (c=${this.spawnC}, r=${this.spawnR})`,
+      'color:#6ff;font-weight:bold;'
+    );
+  }
 
   update() {
     if (!this.isLoaded()) return;
-
     const dt = 1 / 60;
-    this._updateLightning(dt); // ✅ always runs
 
+    this._handleClickDebug();
+    this._updateLightning(dt);
     this.lighting.update(dt);
     this.player.update();
     this.camera.update(dt);
@@ -159,9 +170,6 @@ export class GameScene {
     this.witchManager.update(dt);
   }
 
-  /*───────────────────────────────────────────────
-    RENDER LOOP
-  ────────────────────────────────────────────────*/
   render() {
     if (!this.isLoaded()) {
       drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
@@ -169,37 +177,25 @@ export class GameScene {
     }
 
     const cam = this.player.pos;
-
-    // 1️⃣ base lighting
     this.lighting.renderBase(cam);
-
-    // 2️⃣ below-map entities
     this.witchManager.renderBelow();
 
-    // 3️⃣ indoor lightning
     if (this.lighting.lightningRenderMode === 'background')
       this.lighting.renderMidLayer(cam);
 
-    // 4️⃣ map
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
-
-    // 5️⃣ objects
     this.objects?.draw();
 
-    // 6️⃣ player + above entities
     const stack = [...this.witchManager.entitiesAbove, this.player];
     stack.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of stack) e?.draw?.();
 
-    // ✅ Safe debug draw
     if (this.objectTriggers && this.objectTriggers.debugEnabled)
       this.objectTriggers.drawDebug();
 
-    // 7️⃣ events + dialog
     this.events?.renderHoverOverlay();
     if (this.dialog.visible) this.dialog.draw();
 
-    // 8️⃣ overlay effects
     if (this.lighting.rainRenderMode === 'overlay')
       this.lighting._renderRain(cam, false);
 
