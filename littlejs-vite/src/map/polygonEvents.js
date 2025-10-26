@@ -8,6 +8,7 @@ import {
   Color,
   vec2,
   drawCanvas2D,
+  clamp,
 } from 'littlejsengine';
 
 /**
@@ -15,7 +16,7 @@ import {
  * ------------------------------------------------------
  * • Hover detection + tint overlay (smooth fade)
  * • Click dispatch via callback
- * • Follows same line-drawing style as mapDebug.js
+ * • Walk-up logic: requireWalkUp enforces valid navigation path before event fires
  */
 export class PolygonEventSystem {
   constructor(map, onEvent, debug = false) {
@@ -24,8 +25,8 @@ export class PolygonEventSystem {
     this.enabled = true;
     this.hovered = null;
     this.lastHovered = null;
-    this.fadeTimer = 0;         // for smooth fade
-    this.activeTintTimer = 0;   // flash on click
+    this.fadeTimer = 0;
+    this.activeTintTimer = 0;
     this.debug = debug;
   }
 
@@ -44,33 +45,86 @@ export class PolygonEventSystem {
       }
     }
 
-    // Reset cursor when not hovering
     if (!newHover) document.body.style.cursor = 'default';
-
-    // Handle hover transitions
     if (newHover !== this.hovered) {
       this.lastHovered = this.hovered;
       this.hovered = newHover;
     }
 
-    // Fade in/out logic
-    if (this.hovered) {
-      this.fadeTimer = Math.min(this.fadeTimer + 1 / 20, 1.0);
-    } else {
-      this.fadeTimer = Math.max(this.fadeTimer - 1 / 20, 0);
-    }
+    this.fadeTimer += (this.hovered ? 1 : -1) / 20;
+    this.fadeTimer = clamp(this.fadeTimer, 0, 1);
 
-    // Click handling
+    // 🟡 Click handling
     if (mouseWasPressed(0) && this.hovered) {
-      console.log('[PolygonEvent] Triggered:', this.hovered.name, this.hovered.eventId);
-      this.onEvent?.(this.hovered);
-      this.activeTintTimer = 0.25; // short orange flash
+      const poly = this.hovered;
+      console.log('[PolygonEvent] Triggered:', poly.name, poly.eventId);
+
+      const requireWalk = poly.properties?.find(p => p.name === 'requireWalkUp')?.value;
+      const player = window.scene?.player;
+      const map = window.scene?.map;
+
+      if (requireWalk && player && map) {
+        const center = poly.pts.reduce((s, p) => s.add(p), vec2(0, 0)).scale(1 / poly.pts.length);
+        const nodes = map.maneuverNodes || [];
+
+        if (!nodes.length) {
+          console.warn('[PolygonEvent] No maneuver nodes found — cannot satisfy walk-up requirement.');
+          return; // ❌ Abort: no nodes
+        }
+
+        // 🧭 Find closest ManeuverNode to polygon center
+        let nearestNode = nodes[0];
+        let nearestDist = Infinity;
+        for (const n of nodes) {
+          const d = n.pos.distance(center);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestNode = n;
+          }
+        }
+
+        const { x, y } = nearestNode.pos;
+        const target = vec2(x, y);
+        const path = player.buildSmartPath(target);
+        console.log('[PolygonEvent] Walk-up → nearest node', nearestNode.id, 'path length', path.length);
+
+        if (path.length > 0) {
+          // ✅ Valid path: begin walking
+          player.path = path;
+          player.destinationMarker = target;
+          player.markerAlpha = 1;
+          this.activeTintTimer = 0.25;
+
+          window.scene.map.debugTempMarker = target;
+
+          // Wait for arrival before firing event
+          const waitArrival = () => {
+            const feet = player.pos.add(player.feetOffset);
+            const dist = feet.distance(target);
+            if (dist < player.reachThreshold) {
+              console.log('[PolygonEvent] Arrived at destination, firing event.');
+              this.onEvent?.(poly);
+            } else if (player.path.length) {
+              requestAnimationFrame(waitArrival);
+            } else {
+              console.warn('[PolygonEvent] Walk-up canceled or blocked; event not triggered.');
+            }
+          };
+          waitArrival();
+          return;
+        } else {
+          // ❌ Abort: cannot find a valid path
+          console.warn('[PolygonEvent] No valid path to maneuver node; event canceled.');
+          return;
+        }
+      }
+
+      // 🔶 Default instant trigger (no requireWalkUp)
+      this.onEvent?.(poly);
+      this.activeTintTimer = 0.25;
     }
 
-    // Decay click flash
     if (this.activeTintTimer > 0) this.activeTintTimer -= 1 / 60;
-
-    // Render overlay each frame (even while fading out)
     this.renderHoverOverlay();
   }
 
@@ -82,26 +136,21 @@ export class PolygonEventSystem {
     const alpha = this.fadeTimer;
     const activeAlpha = Math.max(this.activeTintTimer * 2, alpha);
 
-    // Fill + outline colors, based on active or hover state
     const fillColor = this.activeTintTimer > 0
-      ? new Color(1, 0.5, 0.1, 0.35 * activeAlpha) // orange click flash
-      : new Color(1, 0.9, 0.2, 0.25 * alpha);       // gold hover tint
+      ? new Color(1, 0.5, 0.1, 0.35 * activeAlpha)
+      : new Color(1, 0.9, 0.2, 0.25 * alpha);
 
     const lineColor = this.activeTintTimer > 0
       ? new Color(1, 0.6, 0.1, 0.9 * activeAlpha)
       : new Color(1, 1, 0.3, 0.8 * alpha);
 
-    // Fill region
     fillPolygon(pts, fillColor);
-
-    // Outline (same draw style as debug system)
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length];
       drawLine(a, b, 0.05, lineColor);
     }
 
-    if (this.debug)
-      console.log(`[Hover] ${poly.name} (${poly.eventId})`);
+    if (this.debug) console.log(`[Hover] ${poly.name} (${poly.eventId})`);
   }
 }
 
@@ -126,7 +175,6 @@ function pointInPolygon(p, verts) {
 function fillPolygon(pts, color) {
   if (!pts || pts.length < 3) return;
 
-  // Compute approximate bounds for canvas space
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of pts) {
     if (p.x < minX) minX = p.x;
@@ -138,7 +186,6 @@ function fillPolygon(pts, color) {
   const pos = vec2((minX + maxX) / 2, (minY + maxY) / 2);
   const size = vec2(maxX - minX || 0.001, maxY - minY || 0.001);
 
-  // ✅ Proper LittleJS call: drawCanvas2D(pos, size, rotation, color, callback)
   drawCanvas2D(pos, size, 0, color, context => {
     context.beginPath();
     context.moveTo(pts[0].x - pos.x, pts[0].y - pos.y);

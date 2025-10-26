@@ -1,6 +1,6 @@
 // src/events/windowScene1.js
 'use strict';
-import { vec2, keyWasPressed, timeDelta } from 'littlejsengine';
+import { vec2, keyWasPressed } from 'littlejsengine';
 import { WitchEntity } from '../character/witchEntity.js';
 
 export const event = {
@@ -9,6 +9,7 @@ export const event = {
   async execute(scene, player) {
     if (scene.dialog.isActive()) return;
 
+    // Scene setup
     if (scene.lighting) {
       scene.lighting.setRainMode('background');
       scene.lighting.lightningEnabled = false;
@@ -18,10 +19,7 @@ export const event = {
     scene.dialog.setMode('monologue');
     player.frozen = false;
     scene.dialog.setText('You catch a flicker of motion beyond the windowpane...');
-    await new Promise((resolve) => {
-      const wait = () => (!scene.dialog.visible ? resolve() : requestAnimationFrame(wait));
-      wait();
-    });
+    await waitForDialog(scene);
 
     // Phase 2: dialogue
     scene.dialog.setMode('dialogue');
@@ -47,67 +45,63 @@ export const event = {
     };
 
     const showOptions = () => {
-      scene.dialog.setText(intro, options, async (value) => {
+      scene.dialog.setText(intro, options, async value => {
         if (value === 'closer') {
-          player.frozen = true;
-          const start = player.pos.copy();
-          const step = vec2(0.6, 0.6 * player.tileRatio);
-          const target = player.pos.add(step);
-          const steps = 28;
-          const duration = 0.6;
-          const delay = (duration * 1000) / steps;
+          // hide dialog for cinematic transition
+          scene.dialog.visible = false;
 
-          player.state = 'walk';
-          player.direction = 4;
-          player.frameIndex = 0;
-          player.frameTimer = 0;
-          player.footstepTimer = 0;
-
-          for (let i = 0; i <= steps; i++) {
-            const t = i / steps;
-            player.pos = vec2(
-              start.x + (target.x - start.x) * t,
-              start.y + (target.y - start.y) * t
-            );
-
-            player.frameTimer += timeDelta;
-            const frames = player.frames[`walk_${player.direction + 1}`];
-            if (frames?.length) {
-              const dur =
-                player.durations[`walk_${player.direction + 1}`][player.frameIndex] || 1 / 30;
-              if (player.frameTimer >= dur) {
-                player.frameTimer -= dur;
-                player.frameIndex = (player.frameIndex + 1) % frames.length;
+          // 🧭 Move toward nearest ManeuverNode
+          const nodes = scene.map?.maneuverNodes || [];
+          if (!nodes.length) {
+            console.warn('[WindowScene1] No maneuver nodes found!');
+          } else {
+            const feet = player.pos.add(player.feetOffset);
+            let nearestNode = nodes[0];
+            let nearestDist = Infinity;
+            for (const n of nodes) {
+              const d = feet.distance(n.pos);
+              if (d < nearestDist) {
+                nearestDist = d;
+                nearestNode = n;
               }
             }
 
-            
-            await new Promise((r) => setTimeout(r, delay));
+            const target = vec2(nearestNode.pos.x, nearestNode.pos.y);
+            const path = player.buildSmartPath(target);
+            console.log(`[WindowScene1] Step closer → node ${nearestNode.id}, path length ${path.length}`);
+
+            if (path.length > 0) {
+              // ✅ Allow walking again for natural movement
+              player.frozen = false;
+              player.path = path;
+              player.destinationMarker = target;
+              player.markerAlpha = 1;
+
+              await waitUntilArrived(player, target);
+              // freeze again once reached
+              player.frozen = true;
+            } else {
+              console.warn('[WindowScene1] Could not find valid path to nearest node.');
+            }
           }
 
+          // When arrived
           player.state = 'idle';
-          player.frameIndex = 0;
-          scene.dialog.setText('The figure looks through you with hollow eyes.');
-          await new Promise((r) => setTimeout(r, 2500));
-          scene.dialog.visible = false;
+          player.currentAnimKey = `idle_${player.direction + 1}`;
+          scene.dialog.setMode('monologue');
+          scene.dialog.setText('The figure looks through you with hollow eyes...');
+          await waitForDialog(scene);
+
           fadeOutWitch();
           player.frozen = false;
           scene.dialog.setText('Just like that the figure is gone.');
-          scene.dialog.visible = false;
-        } else if (value === 'away') {
+        }
+
+        else if (value === 'away') {
           scene.dialog.setText('You avert your gaze, but the feeling of being watched lingers.');
-          await new Promise((resolve) => {
-            const waitForSpace = () => {
-              if (keyWasPressed('Space')) return resolve();
-              if (!scene.dialog.visible) return resolve();
-              requestAnimationFrame(waitForSpace);
-            };
-            waitForSpace();
-          });
-          scene.dialog.visible = false;
+          await waitForSpaceOrClose(scene);
           fadeOutWitch();
           player.frozen = false;
-
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             'The figure vanishes as you look away, leaving only an empty window pane behind.'
@@ -115,6 +109,42 @@ export const event = {
         }
       });
     };
+
     showOptions();
   },
 };
+
+/*───────────────────────────────────────────────
+  Utility helpers
+───────────────────────────────────────────────*/
+function waitForDialog(scene) {
+  return new Promise(resolve => {
+    const check = () =>
+      (!scene.dialog.visible || scene.dialog.typeProgress >= scene.dialog.text.length)
+        ? resolve()
+        : requestAnimationFrame(check);
+    check();
+  });
+}
+
+function waitForSpaceOrClose(scene) {
+  return new Promise(resolve => {
+    const check = () => {
+      if (keyWasPressed('Space') || !scene.dialog.visible) return resolve();
+      requestAnimationFrame(check);
+    };
+    check();
+  });
+}
+
+function waitUntilArrived(player, target) {
+  return new Promise(resolve => {
+    const check = () => {
+      const feet = player.pos.add(player.feetOffset);
+      if (feet.distance(target) < player.reachThreshold) return resolve();
+      if (!player.path.length) return resolve(); // canceled or blocked
+      requestAnimationFrame(check);
+    };
+    check();
+  });
+}

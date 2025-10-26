@@ -76,17 +76,26 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     // Event polygons
     // ──────────────────────────────────────────────
     else if (name === 'EventPolygons') {
-      for (const obj of objects) {
-        const poly = obj.polygon;
-        if (!poly) continue;
-        const pts = poly.map(pt => {
-          const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
-          return vec2(w.x, w.y - TILE_H / 2);
-        });
-        const eventId = obj.properties?.find(p => p.name === 'eventId')?.value || null;
-        eventPolygons.push({ id: obj.id, name: obj.name || `event_${obj.id}`, pts, eventId });
-      }
-    }
+  for (const obj of objects) {
+    const poly = obj.polygon;
+    if (!poly) continue;
+    const pts = poly.map(pt => {
+      const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
+      return vec2(w.x, w.y - TILE_H / 2);
+    });
+
+    const props = obj.properties || [];
+    const eventId = props.find(p => p.name === 'eventId')?.value || null;
+
+    eventPolygons.push({
+      id: obj.id,
+      name: obj.name || `event_${obj.id}`,
+      pts,
+      eventId,
+      properties: props,          // ✅ now included
+    });
+  }
+}
 
     // ──────────────────────────────────────────────
     // Object sprites
