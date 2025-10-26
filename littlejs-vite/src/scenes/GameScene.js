@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js  (entire fixed file)
+// src/scenes/GameScene.js — ✅ noclip-ready (window.player exposed)
 'use strict';
 import { vec2, drawText, hsl, screenToWorld, mousePosScreen, mouseWasPressed } from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
@@ -17,7 +17,7 @@ import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld, worldToIso } from '../map/isoMath.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -55,6 +55,9 @@ export class GameScene {
     this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
+
+    // ✅ expose for console debugging (use player.noclip = true)
+    window.player = this.player;
 
     this.objects = new ObjectSystem(this.map, PPU);
     await this.objects.load();
@@ -189,7 +192,7 @@ export class GameScene {
     // ---- LAYER 5: debug overlays ----
     this.events?.renderHoverOverlay();
 
-    // ---- LAYER 6: rain + lightning overlays (both on overlayContext) ----
+    // ---- LAYER 6: rain + lightning overlays ----
     if (this.lighting.rainRenderMode === 'overlay')
       this.lighting._renderRain(cam, false);
 
