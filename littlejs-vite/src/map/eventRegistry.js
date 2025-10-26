@@ -10,6 +10,7 @@
  *
  * Example file structure:
  *   src/events/doorTeleport1.js
+ *   src/events/doorTeleport2.js
  *   src/events/windowScene1.js
  *   src/events/witchSpawn.js
  *
@@ -22,9 +23,11 @@
  */
 
 import { event as doorTeleport1 } from '../events/doorTeleport1.js';
+import { event as doorTeleport2 } from '../events/doorTeleport2.js';
 import { event as windowScene1 } from '../events/windowScene1.js';
 
 export const EventRegistry = Object.freeze({
   [doorTeleport1.id]: doorTeleport1,
+  [doorTeleport2.id]: doorTeleport2,
   [windowScene1.id]: windowScene1,
 });

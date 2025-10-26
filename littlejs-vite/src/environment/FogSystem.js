@@ -21,13 +21,12 @@ export class FogSystem {
     this.fogColor = new Color(0.65, 0.68, 0.72, 1);  
   
     this.emitters = [];  
-    this.maxEmitters = 8;  
+    this.maxEmitters = 3;  
     this.emitterSpawnRadius = 12;  
   
     this.layers = [  
-      { distance: 4, alpha: 0.12, size: 6, speed: 0.02 },  
-      { distance: 8, alpha: 0.10, size: 4, speed: 0.015 },  
-      { distance: 12, alpha: 0.14, size: 4.5, speed: 0.01 }  
+      { distance: 6, alpha: 0.12, size: 6, speed: 0.02 },  
+      { distance: 12, alpha: 0.14, size: 5, speed: 0.01 }  
     ];  
   
     this.overlayAlpha = 0.4;  
