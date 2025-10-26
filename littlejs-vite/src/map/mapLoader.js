@@ -1,46 +1,92 @@
-// src/map/mapLoader.js — ✅ ManeuverNodes with Auto-Connection Fallback
+// src/map/mapLoader.js — ⚡ Diagnostic Logging + Timing Breakdown
 import { vec2, TextureInfo, TileInfo, textureInfos } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
 
-/**
- * Load a Tiled JSON map and convert into game-ready world data
- * ------------------------------------------------------------
- * • Handles tile + object layers
- * • Builds collider polygons and event polygons
- * • Loads object sprites and maneuver nodes (with auto-connections)
- */
+let atlasData = null;
+let atlasTexture = null;
+let atlasTexIndex = -1;
+
+/*───────────────────────────────────────────────
+  LOAD ATLAS (once globally)
+───────────────────────────────────────────────*/
+async function loadAtlas() {
+  const atlasStart = performance.now();
+  if (atlasData && atlasTexture) {
+    console.log(`[mapLoader] ✅ Atlas already cached`);
+    return { atlasData, atlasTexture, atlasTexIndex };
+  }
+
+  console.groupCollapsed('[mapLoader] Loading TextureAtlas');
+  const [json, img] = await Promise.all([
+    fetch('/assets/map/Sprites/texture.json').then(r => r.json()),
+    loadImage('/assets/map/Sprites/texture.png')
+  ]);
+  atlasData = json.frames;
+  atlasTexture = new TextureInfo(img);
+  textureInfos.push(atlasTexture);
+  atlasTexIndex = textureInfos.length - 1;
+  console.log(`⏱️ TextureAtlas load: ${(performance.now() - atlasStart).toFixed(2)} ms`);
+  console.groupEnd();
+
+  return { atlasData, atlasTexture, atlasTexIndex };
+}
+
+/*───────────────────────────────────────────────
+  MAIN MAP LOADER — uses atlas instead of per-tile PNGs
+───────────────────────────────────────────────*/
 export async function loadTiledMap(MAP_PATH, PPU) {
-  const mapData = await fetchJSON(MAP_PATH);
+  const tStart = performance.now();
+  console.groupCollapsed(`[mapLoader] Loading ${MAP_PATH}`);
+
+  // 1️⃣ Fetch + parse JSON
+  const f1 = performance.now();
+  const resp = await fetch(MAP_PATH);
+  const f2 = performance.now();
+  const mapData = await resp.json();
+  const f3 = performance.now();
+
+  console.log(`⏱️ fetch(): ${(f2 - f1).toFixed(2)} ms`);
+  console.log(`⏱️ JSON.parse(): ${(f3 - f2).toFixed(2)} ms`);
+
+  // 2️⃣ Load or reuse atlas
+  const atlasLoadStart = performance.now();
+  const { atlasData, atlasTexture, atlasTexIndex } = await loadAtlas();
+  console.log(`⏱️ loadAtlas(): ${(performance.now() - atlasLoadStart).toFixed(2)} ms`);
+
+  // 3️⃣ Tile constants
   const TILE_W = mapData.tilewidth / PPU;
   const TILE_H = mapData.tileheight / PPU;
   const mapW = mapData.width;
   const mapH = mapData.height;
 
-  // cache tileset
-  const tilesetDef = mapData.tilesets[0];
-  const firstgid = tilesetDef.firstgid || 1;
-  const rawImages = Object.create(null);
+  // 4️⃣ Build gid→name map
+  const gidStart = performance.now();
+  const tileset = mapData.tilesets[0];
+  const firstgid = tileset.firstgid || 1;
+  const gidToName = {};
+  for (const tile of tileset.tiles || []) {
+    const name = tile.image.split('/').pop();
+    gidToName[firstgid + tile.id] = name;
+  }
+  console.log(`⏱️ GID→Name build: ${(performance.now() - gidStart).toFixed(2)} ms (${Object.keys(gidToName).length} entries)`);
+
+  // 5️⃣ Build TileInfo objects
+  const tileInfoStart = performance.now();
   const tileInfos = Object.create(null);
+  for (const [name, frameObj] of Object.entries(atlasData)) {
+    const f = frameObj.frame;
+    tileInfos[name] = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), atlasTexIndex);
+  }
+  console.log(`⏱️ TileInfos build: ${(performance.now() - tileInfoStart).toFixed(2)} ms (${Object.keys(tileInfos).length} atlas frames)`);
 
-  // prefetch all tiles
-  const tiles = tilesetDef.tiles || [];
-  const imagePromises = tiles.map(t => {
-    const gid = t.id + firstgid;
-    const imgPath = `/assets/map/${t.image}`;
-    return loadImage(imgPath).then(img => {
-      rawImages[gid] = img;
-      const texInfo = new TextureInfo(img);
-      textureInfos.push(texInfo);
-      const texIndex = textureInfos.length - 1;
-      tileInfos[gid] = new TileInfo(vec2(0, 0), vec2(img.width, img.height), texIndex);
-    });
-  });
-  await Promise.all(imagePromises);
-
+  // 6️⃣ Filter layers
+  const layerStart = performance.now();
   const layers = mapData.layers.filter(l => l.type === 'tilelayer');
   const objectLayers = mapData.layers.filter(l => l.type === 'objectgroup');
+  console.log(`⏱️ Layer separation: ${(performance.now() - layerStart).toFixed(2)} ms (${layers.length} tile, ${objectLayers.length} object)`);
 
-  // precompute offset maps
+  // 7️⃣ Offset maps
+  const offsetStart = performance.now();
   const floorOffsets = new Map();
   const wallOffsets = new Map();
   for (const layer of layers) {
@@ -48,7 +94,10 @@ export async function loadTiledMap(MAP_PATH, PPU) {
     const worldOffset = (layer.offsety ?? 0) / PPU;
     (name.startsWith('FloorOffset') ? floorOffsets : wallOffsets).set(name, worldOffset);
   }
+  console.log(`⏱️ Offsets setup: ${(performance.now() - offsetStart).toFixed(2)} ms`);
 
+  // 8️⃣ Parse object layers
+  const objStart = performance.now();
   const colliders = [];
   const eventPolygons = [];
   const objectSprites = [];
@@ -56,10 +105,8 @@ export async function loadTiledMap(MAP_PATH, PPU) {
 
   for (const layer of objectLayers) {
     const { name, objects = [] } = layer;
+    const lStart = performance.now();
 
-    // ──────────────────────────────────────────────
-    // Collision polygons
-    // ──────────────────────────────────────────────
     if (name === 'Collision') {
       for (const obj of objects) {
         const poly = obj.polygon;
@@ -71,79 +118,70 @@ export async function loadTiledMap(MAP_PATH, PPU) {
         colliders.push({ id: obj.id, name: obj.name, pts: cleanAndInflatePolygon(pts, 0.002) });
       }
     }
-
-    // ──────────────────────────────────────────────
-    // Event polygons
-    // ──────────────────────────────────────────────
     else if (name === 'EventPolygons') {
-  for (const obj of objects) {
-    const poly = obj.polygon;
-    if (!poly) continue;
-    const pts = poly.map(pt => {
-      const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
-      return vec2(w.x, w.y - TILE_H / 2);
-    });
-
-    const props = obj.properties || [];
-    const eventId = props.find(p => p.name === 'eventId')?.value || null;
-
-    eventPolygons.push({
-      id: obj.id,
-      name: obj.name || `event_${obj.id}`,
-      pts,
-      eventId,
-      properties: props,          // ✅ now included
-    });
-  }
-}
-
-    // ──────────────────────────────────────────────
-    // Object sprites
-    // ──────────────────────────────────────────────
+      for (const obj of objects) {
+        const poly = obj.polygon;
+        if (!poly) continue;
+        const pts = poly.map(pt => {
+          const w = tmxPxToWorld(obj.x + pt.x, obj.y + pt.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
+          return vec2(w.x, w.y - TILE_H / 2);
+        });
+        const props = obj.properties || [];
+        const eventId = props.find(p => p.name === 'eventId')?.value || null;
+        eventPolygons.push({ id: obj.id, name: obj.name || `event_${obj.id}`, pts, eventId, properties: props });
+      }
+    }
     else if (name === 'ObjectSprites') {
       for (const obj of objects) {
         const spriteName = obj.properties?.find(p => p.name === 'spriteName')?.value;
-        if (!spriteName) continue;
-        objectSprites.push({ name: spriteName, x: obj.x, y: obj.y, properties: obj.properties || [] });
+        if (!spriteName || !atlasData[spriteName]) continue;
+        const f = atlasData[spriteName].frame;
+        const tileInfo = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), atlasTexIndex);
+        const w = tmxPxToWorld(obj.x, obj.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
+        const pos = vec2(w.x, w.y - TILE_H / 2);
+        objectSprites.push({ name: spriteName, tileInfo, pos, properties: obj.properties || [] });
       }
     }
-
-    // ──────────────────────────────────────────────
-    // Maneuver nodes (for pathfinding)
-    // ──────────────────────────────────────────────
-else if (name === 'ManeuverNodes') {
-  const maneuverNodes = [];
-  for (const obj of objects) {
-    const id = obj.name || `node_${obj.id}`;
-    // same coordinate math as colliders
-    const w = tmxPxToWorld(obj.x, obj.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
-    const pos = vec2(w.x, w.y - TILE_H / 2); // ✅ anchor fix for proper floor alignment
-    const connections = obj.properties?.find(p => p.name === 'connections')?.value
-      ?.split(',').map(s => s.trim()).filter(Boolean) || [];
-    maneuverNodes.push({ id, pos, connections });
-  }
-
-  // ✅ Auto-connect nearby nodes if none explicitly set
-  const AUTO_RANGE = 2.0; // world-space units
-  for (const n of maneuverNodes) {
-    if (!n.connections.length) {
-      n.connections = maneuverNodes
-        .filter(o => o !== n && n.pos.distance(o.pos) < AUTO_RANGE)
-        .map(o => o.id);
+    else if (name === 'ManeuverNodes') {
+      const nodes = [];
+      for (const obj of objects) {
+        const id = obj.name || `node_${obj.id}`;
+        const w = tmxPxToWorld(obj.x, obj.y, mapW, mapH, TILE_W, TILE_H, PPU, true);
+        const pos = vec2(w.x, w.y - TILE_H / 2);
+        const connections = obj.properties?.find(p => p.name === 'connections')?.value
+          ?.split(',').map(s => s.trim()).filter(Boolean) || [];
+        nodes.push({ id, pos, connections });
+      }
+      const AUTO_RANGE = 2.0;
+      for (const n of nodes)
+        if (!n.connections.length)
+          n.connections = nodes.filter(o => o !== n && n.pos.distance(o.pos) < AUTO_RANGE).map(o => o.id);
+      outManeuverNodes = nodes;
     }
-  }
 
-  outManeuverNodes = maneuverNodes;
-}
+    console.log(`   ↳ ${name} parsed in ${(performance.now() - lStart).toFixed(2)} ms (${objects.length} objects)`);
   }
+  console.log(`⏱️ Object layer parsing total: ${(performance.now() - objStart).toFixed(2)} ms`);
 
-  // ──────────────────────────────────────────────
-  // Return assembled map object
-  // ──────────────────────────────────────────────
+  // 9️⃣ Build gidTileInfos
+  const gidInfoStart = performance.now();
+  const gidTileInfos = {};
+  for (const [gid, name] of Object.entries(gidToName)) {
+    gidTileInfos[gid] = tileInfos[name];
+  }
+  console.log(`⏱️ gidTileInfos build: ${(performance.now() - gidInfoStart).toFixed(2)} ms`);
+
+  // 🔟 Done
+  const total = (performance.now() - tStart).toFixed(2);
+  console.log(`🚀 TOTAL loadTiledMap(): ${total} ms`);
+  console.groupEnd();
+
   return {
     mapData,
-    rawImages,
-    tileInfos,
+    atlasData,
+    atlasTexture,
+    atlasTexIndex,
+    tileInfos: gidTileInfos,
     layers,
     objectLayers,
     colliders,
@@ -168,14 +206,10 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
     if (a.distance(b) > EPS) clean.push(a);
   }
   if (clean.length < 3) return clean;
-
-  // ensure CCW orientation
   let area = 0;
   for (let i = 0, j = clean.length - 1; i < clean.length; j = i++)
     area += (clean[j].x - clean[i].x) * (clean[j].y + clean[i].y);
   if (area > 0) clean.reverse();
-
-  // inflate from center
   const cx = clean.reduce((s, p) => s + p.x, 0) / clean.length;
   const cy = clean.reduce((s, p) => s + p.y, 0) / clean.length;
   const center = vec2(cx, cy);
@@ -187,11 +221,6 @@ function cleanAndInflatePolygon(pts, inflate = 0.002) {
 }
 
 /*───────────────────────────────────────────────*/
-const fetchJSON = url => fetch(url).then(r => {
-  if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
-  return r.json();
-});
-
 const loadImage = src => new Promise((res, rej) => {
   const img = new Image();
   img.onload = () => res(img);

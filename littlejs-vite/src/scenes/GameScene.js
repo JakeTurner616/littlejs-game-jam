@@ -17,7 +17,7 @@ import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld, worldToIso } from '../map/isoMath.js';
 
-setDebugMapEnabled(false);
+setDebugMapEnabled(true);
 
 export class GameScene {
   constructor(skipInit = false) {
@@ -40,57 +40,106 @@ export class GameScene {
     this.debugClickEnabled = true;
   }
 async loadNewMap(mapPath, spawnC, spawnR) {
-  console.log(`[GameScene] Switching to new map: ${mapPath}`);
+  console.groupCollapsed(`[GameScene] 🕒 Switching to new map: ${mapPath}`);
+  const totalStart = performance.now();
 
-  // 🧹 1. Clear current state
-  if (this.objects) this.objects.objects.length = 0;
-  if (this.events) this.events.enabled = false;
-  if (this.objectTriggers) this.objectTriggers.enabled = false;
-  if (this.witchManager) this.witchManager.entitiesAbove = this.witchManager.entitiesBelow = [];
-
-  this.map = null;
   this.ready = false;
-
-  // ⏳ 2. Load new map data
   const PPU = 128;
-  this.map = await loadTiledMap(mapPath, PPU);
 
-  // 🧍 3. Respawn player
-  const { mapData, TILE_W, TILE_H } = this.map;
+  // 1️⃣ Load new map data
+  const t1 = performance.now();
+  const newMap = await loadTiledMap(mapPath, PPU);
+  const t2 = performance.now();
+  console.log(`⏱️ loadTiledMap(): ${(t2 - t1).toFixed(2)} ms`);
+  this.map = newMap;
+
+  // 2️⃣ Reposition player
+  const t3 = performance.now();
+  const { mapData, TILE_W, TILE_H } = newMap;
   const { width, height } = mapData;
   const worldSpawn = isoToWorld(spawnC, spawnR, width, height, TILE_W, TILE_H);
 
   this.player.pos = worldSpawn.subtract(this.player.feetOffset);
-  this.player.setColliders(this.map.colliders);
+  this.player.setColliders(newMap.colliders);
   this.player.state = 'idle';
   this.player.direction = 4;
   this.player.path = [];
+  const t4 = performance.now();
+  console.log(`⏱️ Reposition + collider setup: ${(t4 - t3).toFixed(2)} ms`);
 
-  // 🧱 4. Reload world systems
-  this.objects = new ObjectSystem(this.map, PPU);
-  await this.objects.load();
+  // 3️⃣ ObjectSystem
+  const t5 = performance.now();
+  if (this.objects) {
+    this.objects.map = newMap;
+    this.objects.objects.length = 0;
+    this.objects.depthPolygons.length = 0;
+    await this.objects.load();
+  } else {
+    this.objects = new ObjectSystem(newMap, PPU);
+    await this.objects.load();
+  }
+  const t6 = performance.now();
+  console.log(`⏱️ ObjectSystem.load(): ${(t6 - t5).toFixed(2)} ms`);
 
-  this.events = new PolygonEventSystem(this.map, (poly) => {
-    if (poly?.eventId && EventRegistry[poly.eventId])
-      EventRegistry[poly.eventId].execute(this, this.player);
-  });
+  // 4️⃣ PolygonEventSystem
+  const t7 = performance.now();
+  if (this.events) {
+    this.events.map = newMap;
+    this.events.enabled = true;
+  } else {
+    this.events = new PolygonEventSystem(newMap, (poly) => {
+      if (poly?.eventId && EventRegistry[poly.eventId])
+        EventRegistry[poly.eventId].execute(this, this.player);
+    });
+  }
+  const t8 = performance.now();
+  console.log(`⏱️ PolygonEventSystem setup: ${(t8 - t7).toFixed(2)} ms`);
 
-  this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
-    if (trigger?.eventId && EventRegistry[trigger.eventId])
-      EventRegistry[trigger.eventId].execute(this, this.player);
-  });
-  this.objectTriggers.loadFromMap();
+  // 5️⃣ ObjectTriggerEventSystem
+  const t9 = performance.now();
+  if (this.objectTriggers) {
+    this.objectTriggers.map = newMap;
+    this.objectTriggers.triggers.length = 0;
+    this.objectTriggers.enabled = true;
+    this.objectTriggers.loadFromMap();
+  } else {
+    this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
+      if (trigger?.eventId && EventRegistry[trigger.eventId])
+        EventRegistry[trigger.eventId].execute(this, this.player);
+    });
+    this.objectTriggers.loadFromMap();
+  }
+  const t10 = performance.now();
+  console.log(`⏱️ ObjectTriggerEventSystem setup: ${(t10 - t9).toFixed(2)} ms`);
 
-  // 🌫️ Reload fog-of-war + lighting
-  this.fogOfWar.loadFromMap(this.map);
-  this.fogOfWar.resetAll?.(); // ✅ Correctly reset fog-of-war, not main fog
+  // 6️⃣ Fog of War + Lighting
+  const t11 = performance.now();
+  this.fogOfWar.loadFromMap(newMap);
+  this.fogOfWar.resetAll?.();
   this.lighting.lightningEnabled = true;
+  const t12 = performance.now();
+  console.log(`⏱️ FogOfWar + Lighting reset: ${(t12 - t11).toFixed(2)} ms`);
 
+  // 7️⃣ Witch Manager clear
+  const t13 = performance.now();
+  this.witchManager.entitiesAbove.length = 0;
+  this.witchManager.entitiesBelow.length = 0;
+  const t14 = performance.now();
+  console.log(`⏱️ WitchManager clear: ${(t14 - t13).toFixed(2)} ms`);
+
+  // 8️⃣ Camera + finalize
+  const t15 = performance.now();
   this.camera.snapToTarget();
   this.ready = true;
+  const t16 = performance.now();
+  console.log(`⏱️ Camera snap + finalize: ${(t16 - t15).toFixed(2)} ms`);
 
-  console.log(`[GameScene] Map switch complete: ${mapPath}`);
+  const totalEnd = performance.now();
+  console.log(`🚀 TOTAL MAP SWITCH TIME: ${(totalEnd - totalStart).toFixed(2)} ms`);
+  console.groupEnd();
 }
+
+
   async onEnter() {
     const PPU = 128;
     const MAP_PATH = '/assets/map/sample-iso.tmj';

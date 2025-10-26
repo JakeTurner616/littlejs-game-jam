@@ -1,4 +1,4 @@
-// src/map/objectSystem.js
+// src/map/objectSystem.js — ✅ Skip fade for floor layers + use mapDebug for visualization only
 'use strict';
 import { drawTile, vec2, Color, TileInfo, TextureInfo, textureInfos } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
@@ -46,7 +46,7 @@ export class ObjectSystem {
       });
     }
 
-    // optional depth polygons
+    // optional depth polygons (used for fade + mapDebug)
     const polyLayer = objectLayers.find(l => l.name === 'DepthPolygons');
     if (polyLayer) {
       for (const obj of polyLayer.objects || []) {
@@ -63,18 +63,25 @@ export class ObjectSystem {
       }
     }
 
-    // expose to map for debug
+    // expose to map for mapDebug usage
     this.map._objectSystemRef = this;
     console.log(`[ObjectSystem] Loaded ${this.objects.length} objects`);
   }
 
   /** Update fade alpha based on player position and attached depth polygons */
   update(playerFeet) {
-    const H_RADIUS = 0.6;    // horizontal fade distance threshold (~1 tile)
-    const FADE_RANGE = 0.4;  // vertical fade range
-    const FADE_MIN = 0.35;   // minimum alpha when behind
+    const TILE_H = this.map.TILE_H;
+    const H_RADIUS = 0.5;      // tighter horizontal overlap
+    const MIN_THRESHOLD = 0.1; // don't fade until feet are clearly behind
+    const FADE_RANGE = 0.75;   // smoother fade transition
+    const FADE_MIN = 0.35;     // lowest alpha
+    const V_RADIUS = 0.25;     // strict vertical window
 
     for (const o of this.objects) {
+      // 🚫 Skip fading for any floor layers
+      if (o.name.toLowerCase().includes('floor'))
+        continue;
+
       const poly = this.depthPolygons.find(p => p.owner === o.name);
       let targetAlpha = 1.0;
 
@@ -82,30 +89,43 @@ export class ObjectSystem {
         const pts = poly.polyPts;
         const minX = Math.min(...pts.map(p => p.x));
         const maxX = Math.max(...pts.map(p => p.x));
-        const polyY = getPolygonDepthYAtX(playerFeet, pts);
-
-        // Only fade if horizontally near the polygon
         const withinX = playerFeet.x > minX - H_RADIUS && playerFeet.x < maxX + H_RADIUS;
 
-        if (polyY !== null && withinX) {
-          const dist = playerFeet.y - polyY;
-          if (dist > 0 && dist < FADE_RANGE) {
-            targetAlpha = Math.max(1.0 - dist / FADE_RANGE, FADE_MIN);
+        if (withinX) {
+          // ✅ Use bottom edge as actual visible base (no TILE_H correction)
+          const spriteBottom = o.pos.y - o.size.y * 0.95;
+          const spriteTop = o.pos.y;
+          const polyY = getPolygonDepthYAtX(playerFeet, pts);
+
+          // Blue debug line alignment
+          o._debugBaseY = spriteBottom;
+
+          if (polyY !== null) {
+            const dist = playerFeet.y - polyY;
+
+            // ✅ Only fade when feet are within the sprite’s visible height
+            const withinVertical =
+              playerFeet.y < spriteTop + V_RADIUS && playerFeet.y > spriteBottom - V_RADIUS;
+
+            if (withinVertical && dist > MIN_THRESHOLD && dist < FADE_RANGE) {
+              const ratio = (dist - MIN_THRESHOLD) / (FADE_RANGE - MIN_THRESHOLD);
+              targetAlpha = Math.max(1.0 - ratio, FADE_MIN);
+            }
           }
         }
       }
 
-      // Smooth interpolation
       o.alpha += (targetAlpha - o.alpha) * 0.15;
     }
   }
 
+  /** Draw objects only (debug handled by mapDebug) */
   draw() {
     for (const o of this.objects)
       drawTile(o.pos, o.size, o.tile, new Color(1, 1, 1, o.alpha));
   }
 
-  /** Debug system uses this to get fade function pointer */
+  /** mapDebug uses this to visualize the dynamic depth plane */
   getDepthFunc() { return getPolygonDepthYAtX; }
 }
 

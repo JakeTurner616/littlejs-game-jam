@@ -70,7 +70,7 @@ export const event = {
           }
 
           // 🗺️ Switch to a new map and position
-          await scene.loadNewMap('./assets/map/indoor-room.tmj', 6.25, 8.75);
+          await scene.loadNewMap('/assets/map/indoor-room.tmj', 6.25, 8.75);
           console.log('[doorTeleport2] Loaded new map: indoor-room.tmj');
 
           // 💨 Optional ambience
