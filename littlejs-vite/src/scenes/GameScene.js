@@ -39,7 +39,58 @@ export class GameScene {
     this._lightningEnabled = true;
     this.debugClickEnabled = true;
   }
+async loadNewMap(mapPath, spawnC, spawnR) {
+  console.log(`[GameScene] Switching to new map: ${mapPath}`);
 
+  // 🧹 1. Clear current state
+  if (this.objects) this.objects.objects.length = 0;
+  if (this.events) this.events.enabled = false;
+  if (this.objectTriggers) this.objectTriggers.enabled = false;
+  if (this.witchManager) this.witchManager.entitiesAbove = this.witchManager.entitiesBelow = [];
+
+  this.map = null;
+  this.ready = false;
+
+  // ⏳ 2. Load new map data
+  const PPU = 128;
+  this.map = await loadTiledMap(mapPath, PPU);
+
+  // 🧍 3. Respawn player
+  const { mapData, TILE_W, TILE_H } = this.map;
+  const { width, height } = mapData;
+  const worldSpawn = isoToWorld(spawnC, spawnR, width, height, TILE_W, TILE_H);
+
+  this.player.pos = worldSpawn.subtract(this.player.feetOffset);
+  this.player.setColliders(this.map.colliders);
+  this.player.state = 'idle';
+  this.player.direction = 4;
+  this.player.path = [];
+
+  // 🧱 4. Reload world systems
+  this.objects = new ObjectSystem(this.map, PPU);
+  await this.objects.load();
+
+  this.events = new PolygonEventSystem(this.map, (poly) => {
+    if (poly?.eventId && EventRegistry[poly.eventId])
+      EventRegistry[poly.eventId].execute(this, this.player);
+  });
+
+  this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
+    if (trigger?.eventId && EventRegistry[trigger.eventId])
+      EventRegistry[trigger.eventId].execute(this, this.player);
+  });
+  this.objectTriggers.loadFromMap();
+
+  // 🌫️ Reload fog-of-war + lighting
+  this.fogOfWar.loadFromMap(this.map);
+  this.fogOfWar.resetAll?.(); // ✅ Correctly reset fog-of-war, not main fog
+  this.lighting.lightningEnabled = true;
+
+  this.camera.snapToTarget();
+  this.ready = true;
+
+  console.log(`[GameScene] Map switch complete: ${mapPath}`);
+}
   async onEnter() {
     const PPU = 128;
     const MAP_PATH = '/assets/map/sample-iso.tmj';

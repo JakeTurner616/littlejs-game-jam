@@ -1,12 +1,11 @@
 // src/events/doorTeleport2.js
 'use strict';
 import { keyWasPressed } from 'littlejsengine';
-import { isoToWorld } from '../map/isoMath.js';
 import { audioManager } from '../audio/AudioManager.js';
 
 export const event = {
   id: 'door_teleport_2',
-  description: 'Alternate door teleport (cinematic fog + thunder transition)',
+  description: 'Alternate door teleport (clean map switch + sound + dialogue)',
   async execute(scene, player) {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
@@ -60,7 +59,7 @@ export const event = {
         }
 
         else if (value === 'open') {
-          // 🎧 Sound + fog fade + teleport
+          // 🎧 Sound + teleport
           scene.dialog.visible = false;
 
           try {
@@ -70,31 +69,11 @@ export const event = {
             console.warn('[doorTeleport2] Failed to play door sound:', err);
           }
 
-          // 🌫️ Fog fade out for dramatic transition
-          if (scene.fog) scene.fog.fadeOut(1.5);
-          if (scene.lighting) {
-            scene.lighting.setRainMode('background');
-            scene.lighting.lightningEnabled = false;
-          }
+          // 🗺️ Switch to a new map and position
+          await scene.loadNewMap('./assets/map/indoor-room.tmj', 6.25, 8.75);
+          console.log('[doorTeleport2] Loaded new map: indoor-room.tmj');
 
-          // 🚪 Target tile + direction
-          const { mapData, TILE_W, TILE_H } = scene.map;
-          const { width, height } = mapData;
-          const targetC = 5.42;
-          const targetR = 9.18;
-          const targetDir = 2; // NE direction
-
-          const worldFeet = isoToWorld(targetC, targetR, width, height, TILE_W, TILE_H);
-          player.pos = worldFeet.subtract(player.feetOffset);
-          player.direction = targetDir;
-          player.state = 'idle';
-
-          console.log(
-            `%c[doorTeleport2] Teleport → TILE(c=${targetC}, r=${targetR}) DIR=${targetDir}`,
-            'color:#aef;font-weight:bold;'
-          );
-
-          // 💨 Brief lightning effect for ambience
+          // 💨 Optional ambience
           if (scene.lighting) scene.lighting.triggerLightning(0.6);
 
           // 📜 Continue monologue
@@ -106,7 +85,6 @@ export const event = {
           );
           scene.dialog.visible = true;
 
-          // Re-enable player control
           player.frozen = false;
         }
       });
