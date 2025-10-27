@@ -16,6 +16,7 @@ import { WitchManager } from '../character/WitchManager.js';
 import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld, worldToIso } from '../map/isoMath.js';
+import { DebugStateManager } from '../debug/DebugStateManager.js';
 
 setDebugMapEnabled(false);
 
@@ -155,9 +156,7 @@ async loadNewMap(mapPath, spawnC, spawnR) {
     this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
     this.player.setColliders(this.map.colliders);
     await this.player.loadAllAnimations();
-
-    // ✅ expose for console debugging (use player.noclip = true)
-    window.player = this.player;
+    window.player = this.player; // ✅ console debug access
 
     this.objects = new ObjectSystem(this.map, PPU);
     await this.objects.load();
@@ -167,6 +166,7 @@ async loadNewMap(mapPath, spawnC, spawnR) {
         EventRegistry[poly.eventId].execute(this, this.player);
     });
 
+    // preload key sounds
     audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
     audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
 
@@ -188,6 +188,7 @@ async loadNewMap(mapPath, spawnC, spawnR) {
     this.dialog.setText('Hello world.');
     this.dialog.visible = true;
 
+    // ambient systems
     this.lighting.setRainMode('overlay');
     this.lighting.setLightningMode('overlay');
     this.lighting.lightningEnabled = true;
@@ -195,26 +196,24 @@ async loadNewMap(mapPath, spawnC, spawnR) {
 
     this.fog.setDensity(0.85);
     this.fog.setColor(0.7, 0.75, 0.78);
-    console.log('[GameScene] Silent Hill fog system initialized');
-
     this.fogOfWar.loadFromMap(this.map);
-    console.log('[GameScene] Fog of War system loaded');
-
     await this.witchManager.preload();
     this._initAudio();
 
-    // Dev helpers
-    window.scene = this;
-    window.triggerLightning = (i = 0.8) => {
-      this.lighting.triggerLightning(i);
-      console.log(`[Lighting] Manual trigger (intensity ${i})`);
-    };
-    window.revealAllFog = () => this.fogOfWar.revealAll();
-    window.revealFog = (name) => this.fogOfWar.revealArea(name);
-    window.resetFog = () => this.fogOfWar.resetAll();
+    // developer tools
+window.scene = this;
+window.debug = DebugStateManager;
 
-    console.log(`[GameScene] Player spawn tile: c=${this.spawnC}, r=${this.spawnR}`);
-    this.ready = true;
+// Console helpers
+window.triggerLightning = (i = 0.8) => this.lighting.triggerLightning(i);
+window.revealAllFog = () => this.fogOfWar.revealAll();
+window.revealFog = (name) => this.fogOfWar.revealArea(name);
+window.resetFog = () => this.fogOfWar.resetAll();
+
+// Quick debug info
+console.log(`[GameScene] Player spawn tile: c=${this.spawnC}, r=${this.spawnR}`);
+console.log('[Debug] Use window.debug.list() or window.debug.jump("indoor_entry") to warp.');
+this.ready = true;
   }
 
   _initAudio() {

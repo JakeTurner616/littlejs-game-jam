@@ -7,6 +7,7 @@ import {
 
 export function handlePlayerMovement(p) {
   const move = vec2(0, 0);
+  let pathCanceled = false; // 🧭 track interruptions
 
   // 🟡 Click-to-move (Particle-based destination marker)
   if (mouseWasPressed(0)) {
@@ -28,23 +29,22 @@ export function handlePlayerMovement(p) {
       p.markerAlpha = 1.0;
 
       // Create a particle emitter at destination
-p.markerEmitter = new ParticleEmitter(  
-  target,             // position  
-  0,                  // angle  
-  0.6,               // emitSize (smaller = tighter halo)  
-  0,                  // emitTime (0 = infinite)  
-  6,                 // emitRate (reduced from 50 for subtlety)  
-  0.2,                // emitCone (narrow cone instead of PI)  
-  undefined,          // tileInfo  
-  // 90's horror tone — sickly amber fade with red decay
-  new Color(0.9, 0.75, 0.3, 0.45),   // colorStartA (dim ochre / candlelight)
-  new Color(0.8, 0.6, 0.25, 0.4),    // colorStartB (slightly redder tone)
-  new Color(0.4, 0.1, 0.0, 0.0),     // colorEndA (dark blood-red fade)
-  new Color(0.2, 0.0, 0.0, 0.0),     // colorEndB (nearly black-red)
-  1.5, 0.06, 0.02, 0.02, 0,    // particleTime, sizeStart, sizeEnd, speed (very slow), angleSpeed  
-  0.98, 1, 0, 0.2, 0.15,       // damping, angleDamping, gravityScale, particleCone (narrow), fadeRate  
-  0.1, false, true, true, 1e9  // randomness (low), collide, additive, colorLinear, renderOrder  
-);
+      p.markerEmitter = new ParticleEmitter(
+        target,             // position
+        0,                  // angle
+        0.6,                // emitSize
+        0,                  // emitTime (0 = infinite)
+        6,                  // emitRate
+        0.2,                // emitCone
+        undefined,
+        new Color(0.9, 0.75, 0.3, 0.45),
+        new Color(0.8, 0.6, 0.25, 0.4),
+        new Color(0.4, 0.1, 0.0, 0.0),
+        new Color(0.2, 0.0, 0.0, 0.0),
+        1.5, 0.06, 0.02, 0.02, 0,
+        0.98, 1, 0, 0.2, 0.15,
+        0.1, false, true, true, 1e9
+      );
     } else {
       // No valid path → clear marker
       p.destinationMarker = null;
@@ -52,15 +52,19 @@ p.markerEmitter = new ParticleEmitter(
     }
   }
 
-  // Keyboard input
+  // Keyboard input cancels auto-path navigation
   const keyMove =
     keyIsDown('KeyW') || keyIsDown('ArrowUp') ||
     keyIsDown('KeyS') || keyIsDown('ArrowDown') ||
     keyIsDown('KeyA') || keyIsDown('ArrowLeft') ||
     keyIsDown('KeyD') || keyIsDown('ArrowRight');
 
-  if (keyMove) p.path = [];
+  if (keyMove && p.path.length) {
+    p.path = [];
+    pathCanceled = true;
+  }
 
+  // Base keyboard motion
   if (keyIsDown('KeyW') || keyIsDown('ArrowUp')) move.y += 1;
   if (keyIsDown('KeyS') || keyIsDown('ArrowDown')) move.y -= 1;
   if (keyIsDown('KeyA') || keyIsDown('ArrowLeft')) move.x -= 1;
@@ -109,8 +113,10 @@ p.markerEmitter = new ParticleEmitter(
       const nextFeet = feet.add(step);
       if (!p.pointInsideAnyCollider(nextFeet))
         p.pos = nextFeet.subtract(p.feetOffset);
-      else
+      else {
         p.path = [];
+        pathCanceled = true;
+      }
       const ang = Math.atan2(-move.y, move.x);
       newDir = angleToDir(ang);
     }
@@ -127,22 +133,31 @@ p.markerEmitter = new ParticleEmitter(
   }
 
   // 🟡 Marker fade-out and emitter cleanup
-  if (p.destinationMarker && p.path.length === 0) {
+  if (p.destinationMarker) {
     const distToMarker = feet.distance(p.destinationMarker);
-    if (distToMarker < p.reachThreshold) {
+    const shouldFade = (p.path.length === 0 && distToMarker < p.reachThreshold) || pathCanceled;
+
+    if (shouldFade) {
       p.markerAlpha -= timeDelta * 3;
       if (p.markerAlpha <= 0) {
         p.destinationMarker = null;
         p.markerAlpha = 0;
 
-        // Stop and remove emitter
+        // Stop and remove emitter smoothly
         if (p.markerEmitter) {
           p.markerEmitter.emitRate = 0;
-          p.markerEmitter.emitTime = 0.4; // allow short fade-out
+          p.markerEmitter.emitTime = 0.4; // fade-out for 0.4s
           p.markerEmitter = null;
         }
       }
     }
+  }
+
+  // 🩶 If movement path was interrupted mid-way, fade marker emitter too
+  if (pathCanceled && p.markerEmitter) {
+    p.markerEmitter.emitRate = 0;
+    p.markerEmitter.emitTime = 0.5;
+    p.markerEmitter = null;
   }
 }
 
