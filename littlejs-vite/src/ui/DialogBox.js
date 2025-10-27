@@ -9,6 +9,7 @@ import {
   keyWasPressed
 } from 'littlejsengine';
 import { TextTheme } from './TextTheme.js';
+import { getPortrait } from '../util/portraitCache.js';
 
 /**
  * DialogBox — unified monologue + dialogue system
@@ -47,16 +48,15 @@ export class DialogBox {
     this.fontFamily = 'GameFont';
   }
 
-  async loadPortrait(path) {
-    if (!path) {
-      this.portrait = null;
-      return;
-    }
-    const img = new Image();
-    img.src = path;
-    await img.decode();
+
+async loadPortrait(path) {
+  try {
+    const img = await getPortrait(path);
     this.portrait = img;
+  } catch (e) {
+    console.warn('[DialogBox] Failed to load portrait:', path, e);
   }
+}
 
   setMode(mode) {
     this.mode = mode;

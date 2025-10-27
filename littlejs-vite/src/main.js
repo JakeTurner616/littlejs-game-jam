@@ -9,6 +9,7 @@ import {
 } from 'littlejsengine';
 import { sceneManager } from './core/sceneManager.js';
 import { TitleScene } from './scenes/TitleScene.js';
+import { preloadPortraits } from './util/portraitCache.js';
 
 setShowSplashScreen(false);
 setTileFixBleedScale(0.5);
@@ -69,7 +70,7 @@ const portraitTextures = [
   '/assets/portraits/doorway.png',
   '/assets/portraits/window_face.png',
 ];
-
+preloadPortraits(portraitTextures);
 const witchTextures = [
   '/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
 ];
