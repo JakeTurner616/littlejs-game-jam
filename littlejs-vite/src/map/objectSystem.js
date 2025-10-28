@@ -1,6 +1,9 @@
-// src/map/objectSystem.js — 🧱 wall pixel mask + debug rects
+// src/map/objectSystem.js — 🧱 object sprite depth fade + debug rects
 'use strict';
-import { drawTile, drawRect, vec2, Color, TileInfo, TextureInfo, textureInfos } from 'littlejsengine';
+import {
+  drawTile, drawRect, vec2, Color,
+  TileInfo, TextureInfo, textureInfos, clamp
+} from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
 import { getPolygonDepthYAtX, isDebugMapEnabled } from './mapRenderer.js';
 
@@ -43,7 +46,8 @@ export class ObjectSystem {
         pos: worldPos,
         size: vec2(img.width / PPU, img.height / PPU),
         alpha: 1.0,
-        collisionMask: await this.createCollisionMask(img)
+        targetAlpha: 1.0,
+        mask: await this.createCollisionMask(img)
       });
     }
 
@@ -81,8 +85,41 @@ export class ObjectSystem {
     return { width: img.width, height: img.height, data: mask };
   }
 
+  /*───────────────────────────────────────────────
+    UPDATE — Apply depth fade to all objects
+  ────────────────────────────────────────────────*/
   update(playerFeet) {
-    // keep fade logic unchanged
+    if (!playerFeet) return;
+
+    const MIN = -1.5, RANGE = 2, MINA = 0.45;
+
+    for (const o of this.objects) {
+      // Default full visibility
+      let target = 1.0;
+
+      const poly = this.depthPolygons.find(p => p.owner === o.name);
+      if (poly) {
+        const py = getPolygonDepthYAtX(playerFeet, poly.polyPts);
+        if (py != null) {
+          const dist = playerFeet.y - py;
+          if (dist > MIN && dist < RANGE) {
+            // Simple AABB overlap check for performance
+            const pMinX = playerFeet.x - 0.25, pMaxX = playerFeet.x + 0.25;
+            const pMinY = playerFeet.y - 0.25, pMaxY = playerFeet.y + 0.25;
+            const oMinX = o.pos.x - o.size.x / 2, oMaxX = o.pos.x + o.size.x / 2;
+            const oMinY = o.pos.y - o.size.y / 2, oMaxY = o.pos.y + o.size.y / 2;
+            const overlaps = !(pMaxX < oMinX || pMinX > oMaxX || pMaxY < oMinY || pMinY > oMaxY);
+            if (overlaps) {
+              const ratio = (dist - MIN) / (RANGE - MIN);
+              target = clamp(1 - ratio, MINA, 1);
+            }
+          }
+        }
+      }
+
+      o.targetAlpha = target;
+      o.alpha += (o.targetAlpha - o.alpha) * 0.15;
+    }
   }
 
   draw() {
@@ -96,6 +133,9 @@ export class ObjectSystem {
   getDepthFunc() { return getPolygonDepthYAtX; }
 }
 
+/*───────────────────────────────────────────────
+  HELPER
+───────────────────────────────────────────────*/
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();

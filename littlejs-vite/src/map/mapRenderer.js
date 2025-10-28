@@ -13,7 +13,7 @@ let DEBUG_MAP_ENABLED = true;
 export const setDebugMapEnabled = v => (DEBUG_MAP_ENABLED = !!v);
 export const isDebugMapEnabled = () => DEBUG_MAP_ENABLED;
 
-const DEBUG_DRAW_CONTOURS = true;
+const DEBUG_DRAW_CONTOURS = false; // super insanly expensive use only for debugging 
 const DEBUG_DRAW_DEPTH_POLYS = true;
 const DEBUG_DRAW_PLAYER_BOX = true;
 const DEBUG_DRAW_MAP_GRID = false;
@@ -31,7 +31,7 @@ const alphaMaskCache = new Map();
 /*───────────────────────────────────────────────
   ADAPTIVE ALPHA MASK (simplify + optional fill)
 ───────────────────────────────────────────────*/
-function extractAdaptiveFilledMask(info, atlasTexture, threshold = 8) {
+function extractAdaptiveFilledMask(info, atlasTexture, threshold = 254) {
   const key = `${info.pos.x},${info.pos.y},${info.size.x},${info.size.y}-adaptive`;
   if (alphaMaskCache.has(key)) return alphaMaskCache.get(key);
 
@@ -40,57 +40,64 @@ function extractAdaptiveFilledMask(info, atlasTexture, threshold = 8) {
   const { x: w, y: h } = info.size;
 
   const off = document.createElement('canvas');
-  off.width = w; off.height = h;
+  off.width = w;
+  off.height = h;
   const ctx = off.getContext('2d');
   ctx.drawImage(img, sx, sy, w, h, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
 
+  // --- Extract alpha mask ---
   const mask = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++)
-      mask[y * w + x] = data[(y * w + x) * 4 + 3] > threshold ? 1 : 0;
+  let filledCount = 0;
+  for (let i = 0, j = 3; i < mask.length; i++, j += 4) {
+    const val = data[j] > threshold ? 1 : 0;
+    mask[i] = val;
+    filledCount += val;
+  }
 
-  // compute density
-  const filledCount = mask.reduce((a, b) => a + b, 0);
+  // --- Quick density check ---
   const density = filledCount / (w * h);
   const tooSparse = density < 0.05;
   const tooDense = density > 0.9;
-  const needsBlur = tooSparse || tooDense;
 
-  // adaptive blur for noisy tiles
-  if (needsBlur) {
-    const blurred = new Uint8Array(mask);
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        let sum = 0;
-        for (let yy = -1; yy <= 1; yy++)
-          for (let xx = -1; xx <= 1; xx++)
-            sum += mask[(y + yy) * w + (x + xx)];
-        blurred[y * w + x] = sum >= 5 ? 1 : 0;
+  // --- Optional single-pass blur ---
+  if (tooSparse || tooDense) {
+    const out = new Uint8Array(mask);
+    const w1 = w - 1, h1 = h - 1;
+    for (let y = 1; y < h1; y++) {
+      let row = y * w;
+      for (let x = 1; x < w1; x++) {
+        const i = row + x;
+        const sum =
+          mask[i - w - 1] + mask[i - w] + mask[i - w + 1] +
+          mask[i - 1] + mask[i] + mask[i + 1] +
+          mask[i + w - 1] + mask[i + w] + mask[i + w + 1];
+        out[i] = sum >= 5 ? 1 : 0;
       }
     }
-    blurred.copyWithin(mask);
+    mask.set(out);
   }
 
-  // always fill slightly to ensure interior coverage
-  const filled = new Uint8Array(mask);
+  // --- Two quick morphological dilations ---
+  const fill = new Uint8Array(mask);
+  const w1 = w - 1, h1 = h - 1;
   for (let pass = 0; pass < 2; pass++) {
-    const copy = new Uint8Array(filled);
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        let sum = 0;
-        for (let yy = -1; yy <= 1; yy++)
-          for (let xx = -1; xx <= 1; xx++)
-            sum += copy[(y + yy) * w + (x + xx)];
-        if (sum >= 3) filled[y * w + x] = 1;
+    const src = fill.slice();
+    for (let y = 1; y < h1; y++) {
+      let row = y * w;
+      for (let x = 1; x < w1; x++) {
+        const i = row + x;
+        const sum =
+          src[i - w] + src[i - 1] + src[i] + src[i + 1] + src[i + w];
+        if (sum >= 3) fill[i] = 1;
       }
     }
   }
 
-  alphaMaskCache.set(key, { w, h, filled });
-  return { w, h, filled };
+  const result = { w, h, filled: fill };
+  alphaMaskCache.set(key, result);
+  return result;
 }
-
 /*───────────────────────────────────────────────
   PLAYER ↔ TILE MASK OVERLAP (use filled mask)
 ───────────────────────────────────────────────*/
