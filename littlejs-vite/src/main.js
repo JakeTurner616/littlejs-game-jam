@@ -46,24 +46,10 @@ const playerTextures = [
 // ──────────────────────────────────────────────
 // 2️⃣ BOXER (melee character)
 // ──────────────────────────────────────────────
-const boxerTextures = [
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir1.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir2.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir3.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir4.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir5.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir6.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir7.png',
-  '/assets/melee-character/Idle1/Boxer__Idle1_dir8.png',
-
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir1.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir2.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir3.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir4.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir5.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir6.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir7.png',
-  '/assets/melee-character/WalkFoward/Boxer__WalkFoward_dir8.png',
+const MapAssets = [
+  '/assets/map/inside.tmj',
+  '/assets/map/outside.tmj',
+  '/assets/map/indoor-room.tmj',
 ];
 
 const portraitTextures = [
@@ -78,7 +64,7 @@ const witchTextures = [
 // Combined preload list
 const preloadImages = [
   ...playerTextures,
-  ...boxerTextures,
+  ...MapAssets,
   ...portraitTextures,
   ...witchTextures,
 ];

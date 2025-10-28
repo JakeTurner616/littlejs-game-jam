@@ -1,4 +1,4 @@
-// src/character/playerController.js
+// src/character/playerController.js — 🧍 sprite bounds + debug rect
 'use strict';
 import {
   vec2, keyIsDown, timeDelta, Color, setCameraPos,
@@ -8,6 +8,7 @@ import { handlePlayerMovement } from './playerMovement.js';
 import { handlePlayerAnimation, loadAllAnimations } from './playerAnimation.js';
 import { buildSmartPath } from './playerPathfinding.js';
 import { pointInsideAnyCollider } from './playerCollision.js';
+import { isDebugMapEnabled } from '../map/mapRenderer.js';
 
 export class PlayerController {
   constructor(pos = vec2(0, 0), textureCfg = { idleStartIndex: 0, walkStartIndex: 8 }, ppu = 128) {
@@ -40,7 +41,7 @@ export class PlayerController {
       markerAlpha: 0,
       markerScale: 1,
       markerTimer: 0,
-      noclip: false // toggled manually in console
+      noclip: false
     });
   }
 
@@ -48,26 +49,34 @@ export class PlayerController {
   async initAnimations() { await loadAllAnimations(this); }
   setColliders(c) { this.mapColliders = c || []; }
 
-  /*────────────────────────── Update ──────────────────────────*/
   update() {
     if (!this.ready) return;
-
-    // Normal movement + animation always happen
     handlePlayerMovement(this);
     handlePlayerAnimation(this);
-
-    if (!window.scene?.cinematicMode)
-      setCameraPos(this.pos);
+    if (!window.scene?.cinematicMode) setCameraPos(this.pos);
   }
 
-  /*────────────────────────── Collision Override ──────────────────────────*/
-  // ✅ Overwrite collider check to ignore when noclip is true
   pointInsideAnyCollider(p) {
-    if (this.noclip) return false; // 🚫 skip all collision detection
+    if (this.noclip) return false;
     return pointInsideAnyCollider(this.mapColliders, p);
   }
 
-  /*────────────────────────── Draw ──────────────────────────*/
+  /** Get world-space bounding box of current sprite */
+  getSpriteBounds() {
+    const f = this.currentFrames()[this.frameIndex];
+    if (!f) return null;
+    const s = vec2((f.w / this.ppu) * 256 / 504, (f.h / this.ppu) * 256 / 504);
+    const spritePos = this.pos.add(vec2(0, 0.5));
+    return {
+      pos: spritePos,
+      size: s,
+      minX: spritePos.x - s.x / 2,
+      maxX: spritePos.x + s.x / 2,
+      minY: spritePos.y - s.y / 2,
+      maxY: spritePos.y + s.y / 2
+    };
+  }
+
   draw() {
     if (!this.ready) return;
     const f = this.currentFrames()[this.frameIndex];
@@ -78,15 +87,20 @@ export class PlayerController {
     this.drawShadow();
     drawTile(this.pos.add(vec2(0, 0.5)), s, tex, undefined, 0, 0, Color.white);
 
-    const feet = this.pos.add(this.feetOffset);
-    drawRect(
-      feet,
-      vec2(0.06, 0.06),
-      this.noclip ? new Color(1, 1, 0, 1) : new Color(1, 0, 1, 1)
-    );
+    // feet dot
+    drawRect(this.pos.add(this.feetOffset), vec2(0.06, 0.06),
+      this.noclip ? new Color(1, 1, 0, 1) : new Color(1, 0, 1, 1));
 
+    // path debug
     for (let i = 0; i < this.path.length - 1; i++)
       drawLine(this.path[i], this.path[i + 1], 0.03, new Color(0, 1, 0, 0.4));
+
+    // 🟩 debug sprite bounds
+    if (isDebugMapEnabled()) {
+      const b = this.getSpriteBounds();
+      if (b)
+        drawRect(b.pos, b.size, new Color(0, 1, 0, 0.3), 0, false);
+    }
   }
 
   drawShadow() {
