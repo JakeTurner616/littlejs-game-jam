@@ -75,16 +75,10 @@ const witchTextures = [
   '/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
 ];
 
-// ──────────────────────────────────────────────
-// 3️⃣ MAP TILESET
-// ──────────────────────────────────────────────
-const mapTextures = ['/assets/map/sample-iso.png'];
-
 // Combined preload list
 const preloadImages = [
   ...playerTextures,
   ...boxerTextures,
-  ...mapTextures,
   ...portraitTextures,
   ...witchTextures,
 ];

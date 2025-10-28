@@ -1,12 +1,11 @@
-// src/events/doorTeleport1.js
+// src/events/doorTeleport1.js — ✅ now loads /assets/map/inside.tmj on open
 'use strict';
-import { keyWasPressed, vec2 } from 'littlejsengine';
-import { isoToWorld } from '../map/isoMath.js';
+import { keyWasPressed } from 'littlejsengine';
 import { audioManager } from '../audio/AudioManager.js';
 
 export const event = {
   id: 'door_teleport_1',
-  description: 'Two-phase event: monologue intro → interactive dialogue (tile-based teleport)',
+  description: 'Door interaction: opens the door and loads the indoor map',
   async execute(scene, player) {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
@@ -70,29 +69,13 @@ export const event = {
             console.warn('[doorTeleport1] Failed to play door sound:', err);
           }
 
-          // 🚪 Convert tile-space → world-space (aligned to player feet)
-          const { mapData, TILE_W, TILE_H } = scene.map;
-          const { width, height } = mapData;
-
-          // ✅ Target tile + facing direction
-          const targetC = 10.18;
-          const targetR = 11.98;
-          const targetDir = 4; // SW (0–7 range)
-
-          const worldFeet = isoToWorld(targetC, targetR, width, height, TILE_W, TILE_H);
-          player.pos = worldFeet.subtract(player.feetOffset); // align feet perfectly
-          player.direction = targetDir;
-          player.state = 'idle';
-
-          console.log(
-            `%c[doorTeleport1] Teleport to TILE (c=${targetC}, r=${targetR}) DIR=${targetDir}`,
-            'color:#6ff;font-weight:bold;'
-          );
+          // 🌫️ Fade out fog before transition
           if (scene.fog) {
             scene.fog.fadeOut();
             console.log('[doorTeleport1] Fog fade-out triggered');
           }
-          // 🕯️ Switch to indoor lighting
+
+          // 🕯️ Adjust lighting for indoor mode
           if (scene.lighting) {
             scene.lighting.setRainMode('background');
             scene.lighting.setLightningMode('background');
@@ -100,7 +83,11 @@ export const event = {
             console.log('[doorTeleport1] Switched to indoor lighting (background mode)');
           }
 
-          // 📜 Continue monologue
+          // 🗺️ Switch to indoor map
+          console.log('[doorTeleport1] Loading /assets/map/inside.tmj …');
+          await scene.loadNewMap('/assets/map/inside.tmj', 9.857, 11.983); // 🎯 adjust spawnC,R as needed
+
+          // 🎬 Show short entry monologue
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +

@@ -11,7 +11,7 @@ export const DebugStateManager = {
   states: {
     start: {
       description: 'Outdoor starting area',
-      map: '/assets/map/sample-iso.tmj',
+      map: '/assets/map/inside.tmj',
       c: 3.99,
       r: 11.49,
       type: 'outdoor'

@@ -143,7 +143,7 @@ async loadNewMap(mapPath, spawnC, spawnR) {
 
   async onEnter() {
     const PPU = 128;
-    const MAP_PATH = '/assets/map/sample-iso.tmj';
+    const MAP_PATH = '/assets/map/outside.tmj';
     this.map = await loadTiledMap(MAP_PATH, PPU);
 
     const { mapData, TILE_W, TILE_H } = this.map;
@@ -213,6 +213,45 @@ window.resetFog = () => this.fogOfWar.resetAll();
 // Quick debug info
 console.log(`[GameScene] Player spawn tile: c=${this.spawnC}, r=${this.spawnR}`);
 console.log('[Debug] Use window.debug.list() or window.debug.jump("indoor_entry") to warp.');
+window.scene = this;
+window.player = this.player;
+
+// ✅ Safe printPlayerPosition (works regardless of worldToIso return type)
+window.printPlayerPosition = () => {
+  if (!this.player || !this.map) {
+    console.warn('⚠️ Scene or player not ready yet');
+    return;
+  }
+
+  const { mapData, TILE_W, TILE_H } = this.map;
+  const { width, height } = mapData;
+  const feet = this.player.pos.add(this.player.feetOffset);
+
+  // Convert world → tile space (may return vec2 or {c,r})
+  const iso = worldToIso(feet.x, feet.y, width, height, TILE_W, TILE_H);
+
+  // normalize key names
+  const c = iso.c ?? iso.x;
+  const r = iso.r ?? iso.y;
+
+  if (c == null || r == null) {
+    console.warn('⚠️ worldToIso() did not return valid c,r or x,y values:', iso);
+    return;
+  }
+
+  console.log(
+    `%c🧍 Player Feet (world): x=${feet.x.toFixed(3)}, y=${feet.y.toFixed(3)}`,
+    'color:#8ff;font-weight:bold'
+  );
+  console.log(
+    `%c📐 Player Tile (for loadNewMap): c=${c.toFixed(3)}, r=${r.toFixed(3)}`,
+    'color:#6f9;font-weight:bold'
+  );
+  console.log(
+    `%c➡️  scene.loadNewMap('/assets/map/inside.tmj', ${c.toFixed(3)}, ${r.toFixed(3)})`,
+    'color:#ff9;font-weight:bold'
+  );
+};
 this.ready = true;
   }
 
