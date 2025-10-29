@@ -1,6 +1,8 @@
-// src/scenes/GameScene.js — ✅ noclip-ready + debug sprite collision visualization
+// src/scenes/GameScene.js — 🎨 noclip-ready + slow paint-in reveal + debug collision visualization
 'use strict';
-import { vec2, drawText, hsl, screenToWorld, mousePosScreen, mouseWasPressed } from 'littlejsengine';
+import {
+  vec2, drawText, hsl, screenToWorld, mousePosScreen, mouseWasPressed
+} from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled, isDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
@@ -15,8 +17,9 @@ import { ObjectSystem } from '../map/objectSystem.js';
 import { WitchManager } from '../character/WitchManager.js';
 import { CameraController } from '../core/CameraController.js';
 import { audioManager } from '../audio/AudioManager.js';
-import { isoToWorld, worldToIso } from '../map/isoMath.js';
+import { isoToWorld } from '../map/isoMath.js';
 import { DebugStateManager } from '../debug/DebugStateManager.js';
+import { initPaintSystem, updatePaintSystem } from '../map/paintSystem.js'; // 🎨 paint system
 
 setDebugMapEnabled(false);
 
@@ -42,7 +45,6 @@ export class GameScene {
 
   async loadNewMap(mapPath, spawnC, spawnR) {
     console.groupCollapsed(`[GameScene] 🕒 Switching to new map: ${mapPath}`);
-    const totalStart = performance.now();
     this.ready = false;
     const PPU = 128;
     const newMap = await loadTiledMap(mapPath, PPU);
@@ -96,69 +98,81 @@ export class GameScene {
     this.witchManager.entitiesAbove.length = 0;
     this.witchManager.entitiesBelow.length = 0;
     this.camera.snapToTarget();
+
+    // 🎨 initialize paint-in system (tiles start black, paint in slowly)
+    initPaintSystem(this.map, this.player);
+
     this.ready = true;
     console.groupEnd();
   }
 
-  async onEnter() {
-    const PPU = 128;
-    const MAP_PATH = '/assets/map/outside.tmj';
-    this.map = await loadTiledMap(MAP_PATH, PPU);
-    const { mapData, TILE_W, TILE_H } = this.map;
-    const { width, height } = mapData;
-    this.spawnC = 3.99;
-    this.spawnR = 11.49;
-    const PLAYER_SPAWN = isoToWorld(this.spawnC, this.spawnR, width, height, TILE_W, TILE_H);
+async onEnter() {
+  const PPU = 128;
+  const MAP_PATH = '/assets/map/outside.tmj';
+  const SPAWN_C = 3.99;
+  const SPAWN_R = 11.49;
 
-    this.player = new PlayerController(PLAYER_SPAWN, { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
-    this.player.setColliders(this.map.colliders);
-    await this.player.loadAllAnimations();
-    window.player = this.player;
+  // 🧍‍♂️ Initialize player before map load (so loadNewMap can attach it)
+  this.player = new PlayerController(vec2(), { idleStartIndex: 0, walkStartIndex: 8 }, PPU);
+  await this.player.loadAllAnimations();
+  this.camera.setTarget(this.player);
+  this.camera.snapToTarget();
 
-    this.objects = new ObjectSystem(this.map, PPU);
-    await this.objects.load();
+  // 🔁 Use the unified map-loading pipeline (handles paint system + fog + triggers)
+  await this.loadNewMap(MAP_PATH, SPAWN_C, SPAWN_R);
 
-    this.events = new PolygonEventSystem(this.map, (poly) => {
-      if (poly?.eventId && EventRegistry[poly.eventId])
-        EventRegistry[poly.eventId].execute(this, this.player);
-    });
+  // 🧱 Initialize object and event systems
+  this.objects = new ObjectSystem(this.map, PPU);
+  await this.objects.load();
 
-    audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
-    audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
+  this.events = new PolygonEventSystem(this.map, (poly) => {
+    if (poly?.eventId && EventRegistry[poly.eventId])
+      EventRegistry[poly.eventId].execute(this, this.player);
+  });
 
-    this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
-      if (trigger?.eventId === 'witch_spawn') {
-        this.witchManager.spawn(trigger);
-        audioManager.playSound('jump_scare', null, 0.5);
-      } else if (trigger?.eventId && EventRegistry[trigger.eventId])
-        EventRegistry[trigger.eventId].execute(this, this.player);
-    });
-    this.objectTriggers.loadFromMap();
+  // 🔊 Load sound effects
+  audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
+  audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
 
-    this.camera.setTarget(this.player);
-    this.camera.snapToTarget();
+  // 🎯 Setup object-based triggers
+  this.objectTriggers = new ObjectTriggerEventSystem(this.map, PPU, (trigger) => {
+    if (trigger?.eventId === 'witch_spawn') {
+      this.witchManager.spawn(trigger);
+      audioManager.playSound('jump_scare', null, 0.5);
+    } else if (trigger?.eventId && EventRegistry[trigger.eventId]) {
+      EventRegistry[trigger.eventId].execute(this, this.player);
+    }
+  });
+  this.objectTriggers.loadFromMap();
 
-    await this.dialog.loadFont();
-    this.dialog.setMode('monologue');
-    this.dialog.setText('Hello world.');
-    this.dialog.visible = true;
+  // 💬 Initialize dialog box
+  await this.dialog.loadFont();
+  this.dialog.setMode('monologue');
+  this.dialog.setText('Hello world.');
+  this.dialog.visible = true;
 
-    this.lighting.setRainMode('overlay');
-    this.lighting.setLightningMode('overlay');
-    this.lighting.lightningEnabled = true;
-    this._scheduleNextLightning();
+  // 🌧️ Environment setup
+  this.lighting.setRainMode('overlay');
+  this.lighting.setLightningMode('overlay');
+  this.lighting.lightningEnabled = true;
+  this._scheduleNextLightning();
 
-    this.fog.setDensity(0.85);
-    this.fog.setColor(0.7, 0.75, 0.78);
-    this.fogOfWar.loadFromMap(this.map);
-    await this.witchManager.preload();
-    this._initAudio();
+  this.fog.setDensity(0.85);
+  this.fog.setColor(0.7, 0.75, 0.78);
+  this.fogOfWar.loadFromMap(this.map);
 
-    window.scene = this;
-    window.debug = DebugStateManager;
-    window.player = this.player;
-    this.ready = true;
-  }
+  // 🧙‍♀️ Preload witch visuals + audio
+  await this.witchManager.preload();
+  this._initAudio();
+
+  // 🧩 Expose global debug handles
+  window.scene = this;
+  window.debug = DebugStateManager;
+  window.player = this.player;
+
+  this.ready = true;
+}
+
 
   _initAudio() {
     try {
@@ -198,6 +212,16 @@ export class GameScene {
     this.events?.update();
     this.objectTriggers?.update(this.player.pos, this.player.feetOffset);
     this.witchManager.update(dt);
+
+    // 🎨 update the paint-in system (slow reveal + debug visualization)
+if (this.player?.ready && this.player.pos && this.ready) {
+  if (!this._paintInitialized) {
+    // force one centered paint update right after spawn
+    updatePaintSystem(0);
+    this._paintInitialized = true;
+  }
+  updatePaintSystem(dt);
+}
 
     if (isDebugMapEnabled()) this.checkSpriteCollisions();
   }
@@ -261,7 +285,10 @@ export class GameScene {
     if (this.lighting.lightningRenderMode === 'background')
       this.lighting.renderMidLayer(cam);
     this.fog.render(this.player.pos, 'midlayer');
+
+    // 🎨 render map with slow black-to-color paint-in effect
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
+
     this.objects?.draw();
     const stack = [...this.witchManager.entitiesAbove, this.player];
     stack.sort((a, b) => a.pos.y - b.pos.y);
