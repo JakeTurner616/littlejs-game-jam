@@ -5,7 +5,10 @@ import {
   TileInfo, TextureInfo, textureInfos, clamp
 } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
-import { getPolygonDepthYAtX, isDebugMapEnabled } from './mapRenderer.js';
+
+// ✅ updated imports for modularized structure
+import { getPolygonDepthYAtX } from './wallUtils.js';
+import { isDebugMapEnabled } from './mapRenderer.js';
 
 export class ObjectSystem {
   constructor(map, PPU) {
