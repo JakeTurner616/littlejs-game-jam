@@ -2792,697 +2792,697 @@
          "tiles":[
                 {
                  "id":12,
-                 "image":"Sprites\/crate_E.png",
+                 "image":"..\/..\/..\/assets\/crate_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":13,
-                 "image":"Sprites\/doorway_E.png",
+                 "image":"..\/..\/..\/assets\/doorway_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":14,
-                 "image":"Sprites\/fence_W.png",
+                 "image":"..\/..\/..\/assets\/fence_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":15,
-                 "image":"Sprites\/floor_E.png",
+                 "image":"..\/..\/..\/assets\/floor_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":16,
-                 "image":"Sprites\/stairs_E.png",
+                 "image":"..\/..\/..\/assets\/stairs_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":17,
-                 "image":"Sprites\/stairs_S.png",
+                 "image":"..\/..\/..\/assets\/stairs_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":18,
-                 "image":"Sprites\/stairsCornerOuter_S.png",
+                 "image":"..\/..\/..\/assets\/stairsCornerOuter_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":19,
-                 "image":"Sprites\/switchFloorOn_E.png",
+                 "image":"..\/..\/..\/assets\/switchFloorOn_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":20,
-                 "image":"Sprites\/wall_E.png",
+                 "image":"..\/..\/..\/assets\/wall_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":21,
-                 "image":"Sprites\/wallCurve_S.png",
+                 "image":"..\/..\/..\/assets\/wallCurve_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":22,
-                 "image":"Sprites\/window_S.png",
+                 "image":"..\/..\/..\/assets\/window_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":23,
-                 "image":"Sprites\/floor_W.png",
+                 "image":"..\/..\/..\/assets\/floor_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":24,
-                 "image":"Sprites\/floor_N.png",
+                 "image":"..\/..\/..\/assets\/floor_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":25,
-                 "image":"Sprites\/floor_S.png",
+                 "image":"..\/..\/..\/assets\/floor_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":26,
-                 "image":"Sprites\/wallCurveHalf_N.png",
+                 "image":"..\/..\/..\/assets\/wallCurveHalf_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":27,
-                 "image":"Sprites\/wallCurveHalf_S.png",
+                 "image":"..\/..\/..\/assets\/wallCurveHalf_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":28,
-                 "image":"Sprites\/wallHalf_E.png",
+                 "image":"..\/..\/..\/assets\/wallHalf_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":29,
-                 "image":"Sprites\/wallHalf_N.png",
+                 "image":"..\/..\/..\/assets\/wallHalf_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":30,
-                 "image":"Sprites\/wallHalf_S.png",
+                 "image":"..\/..\/..\/assets\/wallHalf_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":31,
-                 "image":"Sprites\/wallHalf_W.png",
+                 "image":"..\/..\/..\/assets\/wallHalf_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":32,
-                 "image":"Sprites\/wall_N.png",
+                 "image":"..\/..\/..\/assets\/wall_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":33,
-                 "image":"Sprites\/wall_S.png",
+                 "image":"..\/..\/..\/assets\/wall_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":34,
-                 "image":"Sprites\/wall_W.png",
+                 "image":"..\/..\/..\/assets\/wall_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":35,
-                 "image":"Sprites\/wallBattlement_E.png",
+                 "image":"..\/..\/..\/assets\/wallBattlement_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":36,
-                 "image":"Sprites\/wallBattlement_S.png",
+                 "image":"..\/..\/..\/assets\/wallBattlement_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":37,
-                 "image":"Sprites\/wallCorner_E.png",
+                 "image":"..\/..\/..\/assets\/wallCorner_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":38,
-                 "image":"Sprites\/wallCorner_N.png",
+                 "image":"..\/..\/..\/assets\/wallCorner_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":39,
-                 "image":"Sprites\/wallCorner_S.png",
+                 "image":"..\/..\/..\/assets\/wallCorner_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":40,
-                 "image":"Sprites\/wallCorner_W.png",
+                 "image":"..\/..\/..\/assets\/wallCorner_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":41,
-                 "image":"Sprites\/wallCornerHalf_E.png",
+                 "image":"..\/..\/..\/assets\/wallCornerHalf_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":42,
-                 "image":"Sprites\/wallCornerHalf_N.png",
+                 "image":"..\/..\/..\/assets\/wallCornerHalf_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":43,
-                 "image":"Sprites\/wallCornerHalf_S.png",
+                 "image":"..\/..\/..\/assets\/wallCornerHalf_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":44,
-                 "image":"Sprites\/wallCornerHalf_W.png",
+                 "image":"..\/..\/..\/assets\/wallCornerHalf_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":45,
-                 "image":"Sprites\/wallCurve_N.png",
+                 "image":"..\/..\/..\/assets\/wallCurve_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":46,
-                 "image":"Sprites\/doorClosed_E.png",
+                 "image":"..\/..\/..\/assets\/doorClosed_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":47,
-                 "image":"Sprites\/doorClosed_N.png",
+                 "image":"..\/..\/..\/assets\/doorClosed_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":48,
-                 "image":"Sprites\/doorClosed_S.png",
+                 "image":"..\/..\/..\/assets\/doorClosed_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":49,
-                 "image":"Sprites\/doorClosed_W.png",
+                 "image":"..\/..\/..\/assets\/doorClosed_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":50,
-                 "image":"Sprites\/kit_floor_E.png",
+                 "image":"..\/..\/..\/assets\/kit_floor_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":51,
-                 "image":"Sprites\/hayBales_S.png",
+                 "image":"..\/..\/..\/assets\/hayBales_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":52,
-                 "image":"Sprites\/hayBales_N.png",
+                 "image":"..\/..\/..\/assets\/hayBales_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":53,
-                 "image":"Sprites\/hayBales_W.png",
+                 "image":"..\/..\/..\/assets\/hayBales_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":54,
-                 "image":"Sprites\/hayBales_E.png",
+                 "image":"..\/..\/..\/assets\/hayBales_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":55,
-                 "image":"Sprites\/hay_W.png",
+                 "image":"..\/..\/..\/assets\/hay_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":56,
-                 "image":"Sprites\/hay_S.png",
+                 "image":"..\/..\/..\/assets\/hay_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":57,
-                 "image":"Sprites\/hay_N.png",
+                 "image":"..\/..\/..\/assets\/hay_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":58,
-                 "image":"Sprites\/hay_E.png",
+                 "image":"..\/..\/..\/assets\/hay_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":59,
-                 "image":"Sprites\/cornDouble_E.png",
+                 "image":"..\/..\/..\/assets\/cornDouble_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":60,
-                 "image":"Sprites\/cornDouble_N.png",
+                 "image":"..\/..\/..\/assets\/cornDouble_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":61,
-                 "image":"Sprites\/cornDouble_W.png",
+                 "image":"..\/..\/..\/assets\/cornDouble_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":62,
-                 "image":"Sprites\/cornDouble_S.png",
+                 "image":"..\/..\/..\/assets\/cornDouble_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":63,
-                 "image":"Sprites\/dirt_W.png",
+                 "image":"..\/..\/..\/assets\/dirt_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":64,
-                 "image":"Sprites\/dirt_S.png",
+                 "image":"..\/..\/..\/assets\/dirt_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":65,
-                 "image":"Sprites\/dirt_N.png",
+                 "image":"..\/..\/..\/assets\/dirt_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":66,
-                 "image":"Sprites\/dirt_E.png",
+                 "image":"..\/..\/..\/assets\/dirt_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":67,
-                 "image":"Sprites\/bookcaseDestroyed_S.png",
+                 "image":"..\/..\/..\/assets\/bookcaseDestroyed_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":68,
-                 "image":"Sprites\/floorCarpet_W.png",
+                 "image":"..\/..\/..\/assets\/floorCarpet_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":69,
-                 "image":"Sprites\/floorCarpet_S.png",
+                 "image":"..\/..\/..\/assets\/floorCarpet_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":70,
-                 "image":"Sprites\/floorCarpetEnd_N.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetEnd_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":71,
-                 "image":"Sprites\/floorCarpet_N.png",
+                 "image":"..\/..\/..\/assets\/floorCarpet_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":72,
-                 "image":"Sprites\/floorCarpet_E.png",
+                 "image":"..\/..\/..\/assets\/floorCarpet_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":73,
-                 "image":"Sprites\/floorCarpetEnd_E.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetEnd_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":74,
-                 "image":"Sprites\/floorCarpetSmall_W.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetSmall_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":75,
-                 "image":"Sprites\/floorCarpetSmall_S.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetSmall_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":76,
-                 "image":"Sprites\/floorCarpetEnd_W.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetEnd_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":77,
-                 "image":"Sprites\/floorCarpetEnd_S.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetEnd_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":78,
-                 "image":"Sprites\/floorCarpetSmall_N.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetSmall_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":79,
-                 "image":"Sprites\/floorCarpetSmall_E.png",
+                 "image":"..\/..\/..\/assets\/floorCarpetSmall_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":80,
-                 "image":"Sprites\/kit_floor_W.png",
+                 "image":"..\/..\/..\/assets\/kit_floor_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":81,
-                 "image":"Sprites\/kit_floor_S.png",
+                 "image":"..\/..\/..\/assets\/kit_floor_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":82,
-                 "image":"Sprites\/kit_floor_N.png",
+                 "image":"..\/..\/..\/assets\/kit_floor_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":83,
-                 "image":"Sprites\/fenceHigh_W.png",
+                 "image":"..\/..\/..\/assets\/fenceHigh_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":84,
-                 "image":"Sprites\/fenceHigh_S.png",
+                 "image":"..\/..\/..\/assets\/fenceHigh_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":85,
-                 "image":"Sprites\/fenceHigh_N.png",
+                 "image":"..\/..\/..\/assets\/fenceHigh_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":86,
-                 "image":"Sprites\/fenceHigh_E.png",
+                 "image":"..\/..\/..\/assets\/fenceHigh_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":87,
-                 "image":"Sprites\/fenceLow_W.png",
+                 "image":"..\/..\/..\/assets\/fenceLow_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":88,
-                 "image":"Sprites\/fenceLow_N.png",
+                 "image":"..\/..\/..\/assets\/fenceLow_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":89,
-                 "image":"Sprites\/fenceLowBroken_W.png",
+                 "image":"..\/..\/..\/assets\/fenceLowBroken_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":90,
-                 "image":"Sprites\/fenceLowBroken_N.png",
+                 "image":"..\/..\/..\/assets\/fenceLowBroken_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":91,
-                 "image":"Sprites\/fenceLow_S.png",
+                 "image":"..\/..\/..\/assets\/fenceLow_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":92,
-                 "image":"Sprites\/fenceLow_E.png",
+                 "image":"..\/..\/..\/assets\/fenceLow_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":93,
-                 "image":"Sprites\/fenceLowBroken_S.png",
+                 "image":"..\/..\/..\/assets\/fenceLowBroken_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":94,
-                 "image":"Sprites\/fenceLowBroken_E.png",
+                 "image":"..\/..\/..\/assets\/fenceLowBroken_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":95,
-                 "image":"Sprites\/fenceHighBroken_W.png",
+                 "image":"..\/..\/..\/assets\/fenceHighBroken_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":96,
-                 "image":"Sprites\/fenceHighBroken_S.png",
+                 "image":"..\/..\/..\/assets\/fenceHighBroken_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":97,
-                 "image":"Sprites\/fenceHighBroken_N.png",
+                 "image":"..\/..\/..\/assets\/fenceHighBroken_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":98,
-                 "image":"Sprites\/fenceHighBroken_E.png",
+                 "image":"..\/..\/..\/assets\/fenceHighBroken_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":99,
-                 "image":"Sprites\/tableChairsBroken_S.png",
+                 "image":"..\/..\/..\/assets\/tableChairsBroken_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":100,
-                 "image":"Sprites\/tableChairsBroken_W.png",
+                 "image":"..\/..\/..\/assets\/tableChairsBroken_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":101,
-                 "image":"Sprites\/woodenCrates_N.png",
+                 "image":"..\/..\/..\/assets\/woodenCrates_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":102,
-                 "image":"Sprites\/woodenCrates_S.png",
+                 "image":"..\/..\/..\/assets\/woodenCrates_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":103,
-                 "image":"Sprites\/woodenCrates_W.png",
+                 "image":"..\/..\/..\/assets\/woodenCrates_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":104,
-                 "image":"Sprites\/woodenPile_E.png",
+                 "image":"..\/..\/..\/assets\/woodenPile_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":105,
-                 "image":"Sprites\/woodenPile_N.png",
+                 "image":"..\/..\/..\/assets\/woodenPile_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":106,
-                 "image":"Sprites\/woodenPile_S.png",
+                 "image":"..\/..\/..\/assets\/woodenPile_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":107,
-                 "image":"Sprites\/woodenPile_W.png",
+                 "image":"..\/..\/..\/assets\/woodenPile_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":108,
-                 "image":"Sprites\/woodenCrate_W.png",
+                 "image":"..\/..\/..\/assets\/woodenCrate_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":109,
-                 "image":"Sprites\/woodenCrates_E.png",
+                 "image":"..\/..\/..\/assets\/woodenCrates_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":110,
-                 "image":"Sprites\/tableChairsBroken_E.png",
+                 "image":"..\/..\/..\/assets\/tableChairsBroken_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":111,
-                 "image":"Sprites\/tableChairsBroken_N.png",
+                 "image":"..\/..\/..\/assets\/tableChairsBroken_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":112,
-                 "image":"Sprites\/bookcaseDestroyed_W.png",
+                 "image":"..\/..\/..\/assets\/bookcaseDestroyed_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":113,
-                 "image":"Sprites\/candleStand_E.png",
+                 "image":"..\/..\/..\/assets\/candleStand_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 },
             
                 {
                  "id":114,
-                 "image":"Sprites\/candleStand_N.png",
+                 "image":"..\/..\/..\/assets\/candleStand_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":115,
-                 "image":"Sprites\/candleStand_S.png",
+                 "image":"..\/..\/..\/assets\/candleStand_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":116,
-                 "image":"Sprites\/candleStand_W.png",
+                 "image":"..\/..\/..\/assets\/candleStand_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":117,
-                 "image":"Sprites\/candleStandDouble_E.png",
+                 "image":"..\/..\/..\/assets\/candleStandDouble_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":118,
-                 "image":"Sprites\/candleStandDouble_N.png",
+                 "image":"..\/..\/..\/assets\/candleStandDouble_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":119,
-                 "image":"Sprites\/candleStandDouble_S.png",
+                 "image":"..\/..\/..\/assets\/candleStandDouble_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":120,
-                 "image":"Sprites\/candleStandDouble_W.png",
+                 "image":"..\/..\/..\/assets\/candleStandDouble_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":121,
-                 "image":"Sprites\/bookcaseFallen_E.png",
+                 "image":"..\/..\/..\/assets\/bookcaseFallen_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":122,
-                 "image":"Sprites\/bookcaseFallen_N.png",
+                 "image":"..\/..\/..\/assets\/bookcaseFallen_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":123,
-                 "image":"Sprites\/bookcaseFallen_S.png",
+                 "image":"..\/..\/..\/assets\/bookcaseFallen_S.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":124,
-                 "image":"Sprites\/bookcaseFallen_W.png",
+                 "image":"..\/..\/..\/assets\/bookcaseFallen_W.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":125,
-                 "image":"Sprites\/bookcaseDestroyed_E.png",
+                 "image":"..\/..\/..\/assets\/bookcaseDestroyed_E.png",
                  "imageheight":512,
                  "imagewidth":256
                 }, 
                 {
                  "id":126,
-                 "image":"Sprites\/bookcaseDestroyed_N.png",
+                 "image":"..\/..\/..\/assets\/bookcaseDestroyed_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }],
