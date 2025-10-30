@@ -174,6 +174,33 @@
         {
          "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 124, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+         "height":16,
+         "id":39,
+         "name":"Rubbish",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":17,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 23, 34, 31, 44, 45, 35, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 40, 18, 0, 0, 0, 36, 0, 32, 0, 0, 0, 0,
@@ -202,10 +229,10 @@
          "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 105, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 55, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -608,6 +635,11 @@
                          "name":"eventId",
                          "type":"string",
                          "value":"window_scene_1"
+                        }, 
+                        {
+                         "name":"requiresTrigger",
+                         "type":"string",
+                         "value":"witch_spawn"
                         }],
                  "rotation":0,
                  "type":"",
@@ -1332,103 +1364,6 @@
                 }, 
                 {
                  "height":0,
-                 "id":106,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":0,
-                         "y":0
-                        }, 
-                        {
-                         "x":35.5310077519377,
-                         "y":0.372549019607758
-                        }, 
-                        {
-                         "x":44.5,
-                         "y":36.8823529411765
-                        }, 
-                        {
-                         "x":11.7286821705423,
-                         "y":38
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":1030,
-                 "y":546
-                }, 
-                {
-                 "height":0,
-                 "id":109,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":11.166666666667,
-                         "y":17.5000000000001
-                        }, 
-                        {
-                         "x":35.6666666666665,
-                         "y":-20.9999999999999
-                        }, 
-                        {
-                         "x":57.9999999999998,
-                         "y":-40.6666666666666
-                        }, 
-                        {
-                         "x":39.1666666666665,
-                         "y":-67.8333333333337
-                        }, 
-                        {
-                         "x":-8.5,
-                         "y":-80.1666666666665
-                        }, 
-                        {
-                         "x":-24.8333333333333,
-                         "y":-78.5000000000001
-                        }, 
-                        {
-                         "x":-35.9999999999998,
-                         "y":-21.3333333333336
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":1084,
-                 "y":513.333333333333
-                }, 
-                {
-                 "height":0,
-                 "id":113,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":0,
-                         "y":0
-                        }, 
-                        {
-                         "x":4.50448028673871,
-                         "y":99.8191580756013
-                        }, 
-                        {
-                         "x":-71.6621863799283,
-                         "y":96.0725945017183
-                        }, 
-                        {
-                         "x":-69.2051971326162,
-                         "y":-4.01417525773215
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":958.662186379928,
-                 "y":410.180841924399
-                },
-            
-                {
-                 "height":0,
                  "id":177,
                  "name":"",
                  "polygon":[
@@ -1554,7 +1489,8 @@
                  "width":0,
                  "x":558,
                  "y":208.666666666667
-                }, 
+                },
+            
                 {
                  "height":0,
                  "id":182,
@@ -1594,6 +1530,110 @@
                  "width":0,
                  "x":546.333333333333,
                  "y":204.333333333333
+                }, 
+                {
+                 "height":0,
+                 "id":275,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":-7.83333333333337,
+                         "y":-1.50000000000011
+                        }, 
+                        {
+                         "x":45.4999999999999,
+                         "y":3.16666666666663
+                        }, 
+                        {
+                         "x":45.3333333333333,
+                         "y":-34
+                        }, 
+                        {
+                         "x":68.3333333333333,
+                         "y":-43.6666666666667
+                        }, 
+                        {
+                         "x":36,
+                         "y":-100
+                        }, 
+                        {
+                         "x":-9,
+                         "y":-81.6666666666667
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":678.666666666667,
+                 "y":869.333333333333
+                }, 
+                {
+                 "height":0,
+                 "id":284,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":-54.1666666666667,
+                         "y":28.1666666666667
+                        }, 
+                        {
+                         "x":-83.3333333333334,
+                         "y":14.0000000000001
+                        }, 
+                        {
+                         "x":-85.6666666666665,
+                         "y":-67
+                        }, 
+                        {
+                         "x":-20.8333333333333,
+                         "y":-67.1666666666667
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":751.166666666667,
+                 "y":601.5
+                }, 
+                {
+                 "height":0,
+                 "id":285,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":15.6666666666665,
+                         "y":-60.9999999999999
+                        }, 
+                        {
+                         "x":104.333333333333,
+                         "y":-61.6666666666666
+                        }, 
+                        {
+                         "x":110,
+                         "y":-19.3333333333334
+                        }, 
+                        {
+                         "x":84,
+                         "y":21.3333333333335
+                        }, 
+                        {
+                         "x":75.6666666666667,
+                         "y":36.3333333333333
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":1032.66666666667,
+                 "y":474
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -2243,160 +2283,6 @@
                 }, 
                 {
                  "height":0,
-                 "id":105,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":38.9277716116209,
-                         "y":-2.02186875398285
-                        }, 
-                        {
-                         "x":62.8030192921279,
-                         "y":-6.00831022005295
-                        }, 
-                        {
-                         "x":70.2763511096449,
-                         "y":31.4063818603596
-                        }, 
-                        {
-                         "x":42.1699033580571,
-                         "y":31.8250231132803
-                        }],
-                 "properties":[
-                        {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"chair_E"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":1006.23889505505,
-                 "y":556.258310220053
-                }, 
-                {
-                 "height":0,
-                 "id":110,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":-13,
-                         "y":6.99999999999989
-                        }, 
-                        {
-                         "x":-7.49595469255655,
-                         "y":-0.521768707482806
-                        }, 
-                        {
-                         "x":7.28398058252424,
-                         "y":-32.2523809523808
-                        }, 
-                        {
-                         "x":27.1488673139158,
-                         "y":-68.2829931972785
-                        }, 
-                        {
-                         "x":53.240291262136,
-                         "y":-50.8605442176868
-                        }, 
-                        {
-                         "x":45.92071197411,
-                         "y":-28.4353741496597
-                        }, 
-                        {
-                         "x":1.74959546925561,
-                         "y":16.217006802721
-                        }],
-                 "properties":[
-                        {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"tableChairsBroken_W"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":1088.32928802589,
-                 "y":512.366326530612
-                }, 
-                {
-                 "height":0,
-                 "id":112,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":57.2438519216542,
-                         "y":-7.14778841677857
-                        }, 
-                        {
-                         "x":92.3527447789713,
-                         "y":-21.2408091234972
-                        }, 
-                        {
-                         "x":103.342451921654,
-                         "y":111.028831362327
-                        }, 
-                        {
-                         "x":62.0113930987943,
-                         "y":112.509237543169
-                        }],
-                 "properties":[
-                        {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"bookcaseDestroyed_E"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":759.551948078346,
-                 "y":359.253395790164
-                }, 
-                {
-                 "height":0,
-                 "id":114,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":-12.4821619903029,
-                         "y":69.7330858837802
-                        }, 
-                        {
-                         "x":-23.2105175028898,
-                         "y":1.65715023528211
-                        }, 
-                        {
-                         "x":-24.1909225310412,
-                         "y":-58.6002141162197
-                        }, 
-                        {
-                         "x":-0.149767502889972,
-                         "y":58.1600406085599
-                        }],
-                 "properties":[
-                        {
-                         "name":"tile_c",
-                         "type":"int",
-                         "value":6
-                        }, 
-                        {
-                         "name":"tile_r",
-                         "type":"int",
-                         "value":4
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":783.40781750289,
-                 "y":571.786547449553
-                },
-            
-                {
-                 "height":0,
                  "id":175,
                  "name":"",
                  "polygon":[
@@ -2573,139 +2459,109 @@
                  "width":0,
                  "x":-195,
                  "y":1843
-                }],
-         "opacity":1,
-         "type":"objectgroup",
-         "visible":true,
-         "x":0,
-         "y":0
-        }, 
-        {
-         "draworder":"topdown",
-         "id":29,
-         "name":"ObjectSprites",
-         "objects":[
+                },
+            
                 {
                  "height":0,
-                 "id":104,
+                 "id":276,
                  "name":"",
                  "polygon":[
                         {
-                         "x":0,
-                         "y":0
+                         "x":70,
+                         "y":58
                         }, 
                         {
-                         "x":29.5,
-                         "y":0.5
+                         "x":81.1985999999999,
+                         "y":55.1849999999999
                         }, 
                         {
-                         "x":32.5,
-                         "y":27.5
+                         "x":90.5,
+                         "y":47.5
                         }, 
                         {
-                         "x":6,
-                         "y":28
+                         "x":107.401,
+                         "y":16.9837
+                        }, 
+                        {
+                         "x":94.8809999999999,
+                         "y":-21.7046
+                        }, 
+                        {
+                         "x":61.5776,
+                         "y":-7.26580000000001
+                        }, 
+                        {
+                         "x":59.4331999999999,
+                         "y":48.3980000000001
                         }],
                  "properties":[
                         {
-                         "name":"height",
+                         "name":"tile_c",
                          "type":"int",
-                         "value":156
+                         "value":5
                         }, 
                         {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"chair_E"
-                        }, 
-                        {
-                         "name":"width",
+                         "name":"tile_r",
                          "type":"int",
-                         "value":156
+                         "value":6
                         }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":1034,
-                 "y":544
+                 "x":620.666666666667,
+                 "y":803.333333333333
                 }, 
                 {
                  "height":0,
-                 "id":107,
+                 "id":286,
                  "name":"",
                  "polygon":[
                         {
-                         "x":0,
-                         "y":0
+                         "x":70.1666666666666,
+                         "y":47.8333333333336
                         }, 
                         {
-                         "x":30.0000000000002,
-                         "y":0.666666666666629
+                         "x":84.6986000000001,
+                         "y":43.0183333333333
                         }, 
                         {
-                         "x":32.6666666666667,
-                         "y":24.6666666666666
+                         "x":87.5000000000001,
+                         "y":19.166666666667
                         }, 
                         {
-                         "x":5.00000000000023,
-                         "y":24.3333333333331
+                         "x":101.401,
+                         "y":7.65036666666674
+                        }, 
+                        {
+                         "x":94.881,
+                         "y":-21.7046
+                        }, 
+                        {
+                         "x":61.5776,
+                         "y":-7.2658
+                        }, 
+                        {
+                         "x":50.7665333333335,
+                         "y":46.3979999999998
                         }],
                  "properties":[
                         {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"tableChairsBroken_W"
+                         "name":"tile_c",
+                         "type":"int",
+                         "value":8
+                        }, 
+                        {
+                         "name":"tile_r",
+                         "type":"int",
+                         "value":3
                         }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":1064.33333333333,
-                 "y":457
-                }, 
-                {
-                 "height":0,
-                 "id":111,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":1.01092896174866,
-                         "y":-1.99999999999997
-                        }, 
-                        {
-                         "x":15.9221311475414,
-                         "y":-1.78571428571426
-                        }, 
-                        {
-                         "x":16.4275956284157,
-                         "y":11.7857142857142
-                        }, 
-                        {
-                         "x":3.03278688524598,
-                         "y":11.9999999999999
-                        }],
-                 "properties":[
-                        {
-                         "name":"height",
-                         "type":"int",
-                         "value":256
-                        }, 
-                        {
-                         "name":"spriteName",
-                         "type":"string",
-                         "value":"bookcaseDestroyed_E"
-                        }, 
-                        {
-                         "name":"width",
-                         "type":"int",
-                         "value":256
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":872.905737704918,
-                 "y":406.333333333333
+                 "x":988.666666666667,
+                 "y":426
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -2716,67 +2572,53 @@
     
         {
          "draworder":"topdown",
+         "id":29,
+         "name":"ObjectSprites",
+         "objects":[],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":30,
          "name":"ObjectTriggers",
          "objects":[
                 {
                  "height":0,
-                 "id":117,
+                 "id":277,
                  "name":"",
                  "polygon":[
                         {
-                         "x":-7.33333333333337,
-                         "y":-3.33333333333337
+                         "x":0,
+                         "y":0
                         }, 
                         {
-                         "x":256.257801553941,
-                         "y":-13.3320470092967
+                         "x":-7,
+                         "y":219
                         }, 
                         {
-                         "x":259.371261949606,
-                         "y":292.737078478452
+                         "x":188.5,
+                         "y":245.5
                         }, 
                         {
-                         "x":4.91188960425677,
-                         "y":278.235294117646
+                         "x":158.5,
+                         "y":-6.5
                         }],
                  "properties":[
-                        {
-                         "name":"direction",
-                         "type":"int",
-                         "value":0
-                        }, 
                         {
                          "name":"eventId",
                          "type":"string",
                          "value":"witch_spawn"
-                        }, 
-                        {
-                         "name":"radius",
-                         "type":"float",
-                         "value":2
-                        }, 
-                        {
-                         "name":"renderLayer",
-                         "type":"string",
-                         "value":"below"
-                        }, 
-                        {
-                         "name":"spawn_x",
-                         "type":"float",
-                         "value":17.47
-                        }, 
-                        {
-                         "name":"spawn_y",
-                         "type":"float",
-                         "value":-8.5
                         }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":889.408865112725,
-                 "y":403
+                 "x":904,
+                 "y":420
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -2813,25 +2655,14 @@
                 }, 
                 {
                  "height":22.5,
-                 "id":170,
-                 "name":"",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":23.5,
-                 "x":969.583333333333,
-                 "y":500.75
-                }, 
-                {
-                 "height":22.5,
                  "id":171,
                  "name":"",
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":23.5,
-                 "x":798.25,
-                 "y":669.416666666667
+                 "x":811.25,
+                 "y":726.416666666667
                 }, 
                 {
                  "height":22.5,
@@ -2854,6 +2685,72 @@
                  "width":23.5,
                  "x":282.25,
                  "y":276.083333333334
+                }, 
+                {
+                 "height":22.5,
+                 "id":278,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":939.25,
+                 "y":497.75
+                }, 
+                {
+                 "height":22.5,
+                 "id":279,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":1455.75,
+                 "y":559.25
+                }, 
+                {
+                 "height":22.5,
+                 "id":280,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":932.25,
+                 "y":420.75
+                }, 
+                {
+                 "height":22.5,
+                 "id":281,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":1353.75,
+                 "y":941.25
+                }, 
+                {
+                 "height":22.5,
+                 "id":282,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":468.25,
+                 "y":998.75
+                }, 
+                {
+                 "height":22.5,
+                 "id":283,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":23.5,
+                 "x":793.25,
+                 "y":1005.75
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -2861,8 +2758,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":39,
- "nextobjectid":275,
+ "nextlayerid":40,
+ "nextobjectid":287,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
@@ -2880,7 +2777,7 @@
          "margin":0,
          "name":"Sample",
          "spacing":0,
-         "tilecount":87,
+         "tilecount":115,
          "tileheight":512,
          "tiles":[
                 {
@@ -3407,6 +3304,175 @@
                 {
                  "id":98,
                  "image":"Sprites\/fenceHighBroken_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":99,
+                 "image":"Sprites\/tableChairsBroken_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":100,
+                 "image":"Sprites\/tableChairsBroken_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":101,
+                 "image":"Sprites\/woodenCrates_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":102,
+                 "image":"Sprites\/woodenCrates_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":103,
+                 "image":"Sprites\/woodenCrates_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":104,
+                 "image":"Sprites\/woodenPile_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":105,
+                 "image":"Sprites\/woodenPile_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":106,
+                 "image":"Sprites\/woodenPile_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":107,
+                 "image":"Sprites\/woodenPile_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":108,
+                 "image":"Sprites\/woodenCrate_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":109,
+                 "image":"Sprites\/woodenCrates_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":110,
+                 "image":"Sprites\/tableChairsBroken_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":111,
+                 "image":"Sprites\/tableChairsBroken_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":112,
+                 "image":"Sprites\/bookcaseDestroyed_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":113,
+                 "image":"Sprites\/candleStand_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                },
+            
+                {
+                 "id":114,
+                 "image":"Sprites\/candleStand_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":115,
+                 "image":"Sprites\/candleStand_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":116,
+                 "image":"Sprites\/candleStand_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":117,
+                 "image":"Sprites\/candleStandDouble_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":118,
+                 "image":"Sprites\/candleStandDouble_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":119,
+                 "image":"Sprites\/candleStandDouble_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":120,
+                 "image":"Sprites\/candleStandDouble_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":121,
+                 "image":"Sprites\/bookcaseFallen_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":122,
+                 "image":"Sprites\/bookcaseFallen_N.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":123,
+                 "image":"Sprites\/bookcaseFallen_S.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":124,
+                 "image":"Sprites\/bookcaseFallen_W.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":125,
+                 "image":"Sprites\/bookcaseDestroyed_E.png",
+                 "imageheight":512,
+                 "imagewidth":256
+                }, 
+                {
+                 "id":126,
+                 "image":"Sprites\/bookcaseDestroyed_N.png",
                  "imageheight":512,
                  "imagewidth":256
                 }],

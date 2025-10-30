@@ -3,13 +3,6 @@
 import { vec2, drawLine, Color } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
 
-/**
- * ObjectTriggerEventSystem — polygon-based world triggers
- * --------------------------------------------------------
- * • Reads Tiled object layer named "ObjectTriggers"
- * • Uses polygon containment instead of radius
- * • Only draws debug polygons when debug mode is active
- */
 export class ObjectTriggerEventSystem {
   constructor(map, PPU, onEvent) {
     this.map = map;
@@ -18,7 +11,8 @@ export class ObjectTriggerEventSystem {
     this.enabled = true;
     this.triggers = [];
     this.visited = new Set();
-    this.debugEnabled = false; // ✅ debug toggle
+    this.listeners = new Map(); // ✅ for deferred polygon events
+    this.debugEnabled = false;
 
     if (typeof window !== 'undefined') {
       window.resetAllTriggers = () => this.resetAll();
@@ -53,7 +47,6 @@ export class ObjectTriggerEventSystem {
       const repeatable = props.repeatable ?? false;
       const once = !repeatable;
 
-      // Compute polygon
       let polyPts = [];
       if (obj.polygon?.length) {
         polyPts = obj.polygon.map(pt => {
@@ -61,7 +54,6 @@ export class ObjectTriggerEventSystem {
           return vec2(w.x, w.y - TILE_H / 2);
         });
       } else {
-        // fallback single-point marker
         const w = tmxPxToWorld(obj.x, obj.y, width, height, TILE_W, TILE_H, PPU, true);
         polyPts = [vec2(w.x, w.y - TILE_H / 2)];
       }
@@ -97,11 +89,38 @@ export class ObjectTriggerEventSystem {
 
         console.log(`[ObjectTrigger] Fired '${t.eventId}' inside ${t.name}`);
         this.onEvent?.(t);
+        this.notify(t.eventId); // ✅ run deferred events waiting for this trigger
         t.active = true;
       }
 
       if (!inside && t.active) t.active = false;
     }
+  }
+
+  /*───────────────────────────────────────────────
+    QUERY HELPERS
+  ────────────────────────────────────────────────*/
+  hasFired(eventId) {
+    if (!eventId) return false;
+    for (const key of this.visited)
+      if (key.endsWith(':' + eventId)) return true;
+    return false;
+  }
+
+  /** Allow PolygonEventSystem to subscribe for a trigger */
+  onTrigger(eventId, callback) {
+    if (!eventId || typeof callback !== 'function') return;
+    if (!this.listeners.has(eventId)) this.listeners.set(eventId, []);
+    this.listeners.get(eventId).push(callback);
+  }
+
+  /** Notify all deferred polygon events once this trigger fires */
+  notify(eventId) {
+    const callbacks = this.listeners.get(eventId);
+    if (!callbacks?.length) return;
+    console.log(`[TriggerSystem] Notifying ${callbacks.length} deferred events for '${eventId}'`);
+    for (const cb of callbacks) cb();
+    this.listeners.delete(eventId); // remove after firing
   }
 
   /*───────────────────────────────────────────────
@@ -121,10 +140,10 @@ export class ObjectTriggerEventSystem {
   }
 
   /*───────────────────────────────────────────────
-    DEBUG DRAW — exact polygon outlines (only in debug)
+    DEBUG DRAW
   ────────────────────────────────────────────────*/
   drawDebug() {
-    if (!this.debugEnabled || !this.triggers.length) return; // ✅ only draw in debug
+    if (!this.debugEnabled || !this.triggers.length) return;
     const teal = new Color(0, 0.9, 0.9, 0.8);
     for (const t of this.triggers) {
       if (t.polyPts?.length >= 3) {
@@ -144,6 +163,7 @@ export class ObjectTriggerEventSystem {
   ────────────────────────────────────────────────*/
   reset() {
     this.visited.clear();
+    this.listeners.clear();
     for (const t of this.triggers) t.active = false;
   }
 
