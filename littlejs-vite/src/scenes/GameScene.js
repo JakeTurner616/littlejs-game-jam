@@ -1,10 +1,10 @@
-// src/scenes/GameScene.js — 🎮 Strict trigger-before-event ordering fix
+// src/scenes/GameScene.js — 🌧️ Dynamic environment modes (outside → overlay, inside → background)
 'use strict';
 import {
   vec2, drawText, hsl
 } from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
-import { renderMap, setDebugMapEnabled, isDebugMapEnabled } from '../map/mapRenderer.js';
+import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
 import { PolygonEventSystem } from '../map/polygonEvents.js';
 import { ObjectTriggerEventSystem } from '../map/objectTriggers.js';
 import { PlayerController } from '../character/playerController.js';
@@ -38,6 +38,8 @@ export class GameScene {
     this.camera = new CameraController();
     this.witchManager = new WitchManager(this);
     this.debugClickEnabled = true;
+    this._lightTimer = 0;
+    this._nextLightning = 0;
   }
 
   async loadNewMap(mapPath, spawnC, spawnR) {
@@ -90,11 +92,43 @@ export class GameScene {
       });
     }
 
-    // 🔗 Link trigger system reference so prerequisite checks work
     this.events.setTriggerSystem(this.objectTriggers);
 
+    // 🌧️ Adjust environment depending on map name
+    if (mapPath.includes('inside')) {
+      this.lighting.setRainMode('background');
+      this.lighting.setLightningMode('background');
+      this.lighting.rainEnabled = true;
+      this.lighting.lightningEnabled = true;
+      this.fog.setDensity(0.92);
+      this.fog.setColor(0.55, 0.6, 0.65);
+    } else {
+      this.lighting.setRainMode('overlay');
+      this.lighting.setLightningMode('overlay');
+      this.lighting.rainEnabled = true;
+      this.lighting.lightningEnabled = true;
+      this.fog.setDensity(0.85);
+      this.fog.setColor(0.7, 0.75, 0.78);
+    }
+
+    this._scheduleNextLightning();
     initPaintSystem(this.map, this.player);
     this.ready = true;
+  }
+
+  _scheduleNextLightning() {
+    const intervals = [4, 6, 8, 10, 12, 15];
+    this._nextLightning = intervals[(Math.random() * intervals.length) | 0];
+    this._lightTimer = 0;
+  }
+
+  _updateLightning(dt) {
+    this._lightTimer += dt;
+    if (this._lightTimer >= this._nextLightning) {
+      this._lightTimer = 0;
+      this.lighting.triggerLightning();
+      this._scheduleNextLightning();
+    }
   }
 
   async onEnter() {
@@ -135,13 +169,10 @@ export class GameScene {
 
     const playerFeet = this.player.pos.add(this.player.feetOffset);
     this.objects?.update(playerFeet);
-
-    // ✅ Trigger system first
     this.objectTriggers?.update(this.player.pos, this.player.feetOffset);
-
-    // ✅ Polygon events after triggers — prevents early fire
     this.events?.update();
 
+    this._updateLightning(dt);
     this.witchManager.update(dt);
     this.player.update();
     this.camera.update(dt);
@@ -159,13 +190,25 @@ export class GameScene {
     const cam = this.player.pos;
     this.lighting.renderBase(cam);
     this.witchManager.renderBelow();
+
+    if (this.lighting.lightningRenderMode === 'background')
+      this.lighting.renderMidLayer(cam);
+
     this.fog.render(this.player.pos, 'midlayer');
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
     this.objects?.draw();
+
     const stack = [...this.witchManager.entitiesAbove, this.player];
     stack.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of stack) e?.draw?.();
     this.events?.renderHoverOverlay();
+
+    if (this.lighting.rainRenderMode === 'overlay')
+      this.lighting._renderRain(cam, false);
+    if (this.lighting.lightningRenderMode === 'overlay')
+      this.lighting.renderOverlay(cam);
+
+    this.fog.render(this.player.pos, 'overlay');
     if (this.dialog.visible) this.dialog.draw();
   }
 }

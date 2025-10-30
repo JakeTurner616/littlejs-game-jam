@@ -1,4 +1,4 @@
-// src/map/polygonEvents.js — 🧩 Strict prerequisite enforcement (no deferrals)
+// src/map/polygonEvents.js — 🧩 Strict prerequisite enforcement + player monologue feedback
 'use strict';
 import {
   mouseWasPressed,
@@ -53,18 +53,35 @@ export class PolygonEventSystem {
     if (mouseWasPressed(0) && this.hovered) {
       const poly = this.hovered;
       const requiresTrigger = poly.properties?.find(p => p.name === 'requiresTrigger')?.value?.trim();
+      const blockedMsg = poly.properties?.find(p => p.name === 'blockedMessage')?.value?.trim();
 
-      // 🧩 Strict prerequisite check (no deferrals)
       if (requiresTrigger && this.triggerSystem) {
         const fired = this.triggerSystem.hasFired(requiresTrigger);
         if (!fired) {
           console.warn(`[PolygonEvent] '${poly.name}' blocked — requires trigger '${requiresTrigger}'`);
+
+          // 🎭 Player feedback via monologue
+          const scene = window.scene;
+          if (scene?.dialog) {
+            const msg = blockedMsg || getDefaultBlockedMessage(poly.eventId, requiresTrigger);
+            scene.dialog.setMode('monologue');
+            scene.dialog.visible = true;
+            scene.dialog.setText(msg);
+          }
+
           this.activeTintTimer = 0.25;
           return; // 🚫 do not fire event
         }
       }
 
       console.log('[PolygonEvent] Triggered:', poly.name, poly.eventId);
+
+      // ✅ Clear any residual monologue before executing new dialogue
+      const scene = window.scene;
+      if (scene?.dialog && typeof scene.dialog.clearIfMonologue === 'function') {
+        scene.dialog.clearIfMonologue();
+      }
+
       this.onEvent?.(poly);
       this.activeTintTimer = 0.25;
     }
@@ -94,6 +111,20 @@ export class PolygonEventSystem {
       const a = pts[i], b = pts[(i + 1) % pts.length];
       drawLine(a, b, 0.05, lineColor);
     }
+  }
+}
+
+/*───────────────────────────────────────────────
+  Default monologue messages
+───────────────────────────────────────────────*/
+function getDefaultBlockedMessage(eventId, prereqId) {
+  switch (eventId) {
+    case 'window_scene_1':
+      return "Something feels off... You sense you shouldn't approach that window yet.";
+    case 'door_teleport_2':
+      return "The door won't budge. A chill runs down your spine... as if something unseen holds it shut.";
+    default:
+      return `It seems nothing happens... Perhaps something else must occur before '${eventId}' can unfold.`;
   }
 }
 

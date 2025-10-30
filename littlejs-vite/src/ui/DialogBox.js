@@ -58,13 +58,36 @@ async loadPortrait(path) {
   }
 }
 
-  setMode(mode) {
-    this.mode = mode;
-    this.scrollY = 0;
+setMode(mode) {
+  // 🧩 NEW: allow scene/dialogue events to clear blocked monologues automatically
+  if (this.mode === 'monologue' && mode === 'dialogue' && this.visible) {
+    // Instantly override and clear blocked message
+    this.visible = false;
+    this.text = '';
+    this.typeProgress = 0;
   }
 
+  // ✅ If mode changes, reset scroll and force full override
+  if (this.mode !== mode) {
+    this.mode = mode;
+    this.scrollY = 0;
+    this.typeProgress = 0;
+    this.text = '';
+    this.options = null;
+    this.visible = false;
+  } else {
+    this.mode = mode;
+  }
+}
+
   setText(text, options = null, onOptionSelect = null) {
-    if (this.visible && this.text === text) return;
+    // ✅ Always allow new text to override any visible text or mode
+    if (this.visible) {
+      // Force full override regardless of current mode
+      this.typeProgress = this.text.length;
+      this.visible = false;
+    }
+
     this.text = text;
     this.typeProgress = 0;
     this.pauseTimer = 0;
@@ -313,5 +336,14 @@ async loadPortrait(path) {
     }
 
     overlayContext.restore();
+  }
+
+    clearIfMonologue() {
+    if (this.mode === 'monologue' && this.visible) {
+      this.visible = false;
+      this.text = '';
+      this.typeProgress = 0;
+      this.options = null;
+    }
   }
 }

@@ -632,6 +632,11 @@
                         }],
                  "properties":[
                         {
+                         "name":"blockedMessage",
+                         "type":"string",
+                         "value":"The window casts an unnerving precense"
+                        }, 
+                        {
                          "name":"eventId",
                          "type":"string",
                          "value":"window_scene_1"
@@ -679,6 +684,11 @@
                          "name":"requireWalkUp",
                          "type":"bool",
                          "value":true
+                        }, 
+                        {
+                         "name":"requiresTrigger",
+                         "type":"string",
+                         "value":"witch_spawn"
                         }],
                  "rotation":0,
                  "type":"",
