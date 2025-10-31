@@ -9,7 +9,7 @@ export async function loadAllAnimations(p) {
   const dirs = Array.from({ length: 8 }, (_, i) => i + 1);
   const idle = { cols: 9, rows: 9, frameW: 394, frameH: 504, total: 75, dur: 1 / 30 };
   const walk = { cols: 6, rows: 6, frameW: 394, frameH: 502, total: 31, dur: 1 / 30 };
-  const take = { cols: 8, rows: 9, frameW: 394, frameH: 502, total: 60, dur: 1 / 30 };
+  const take = { cols: 8, rows: 9, frameW: 394, frameH: 502, total: 90, dur: 1 / 30 };
 
   for (const d of dirs) {
     p.frames[`idle_${d}`] = genFrames(idle);

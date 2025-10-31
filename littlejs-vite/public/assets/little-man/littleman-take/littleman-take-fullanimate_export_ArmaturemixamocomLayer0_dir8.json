@@ -83,6 +83,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 0,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 502,
 				"w": 394,
@@ -164,6 +173,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 502,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 1004,
 				"w": 394,
@@ -245,6 +263,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 1004,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 1506,
 				"w": 394,
@@ -326,6 +353,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 1506,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 2008,
 				"w": 394,
@@ -407,6 +443,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 2008,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 2510,
 				"w": 394,
@@ -488,6 +533,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 2510,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 3012,
 				"w": 394,
@@ -569,6 +623,15 @@
 		},
 		{
 			"frame": {
+				"x": 3546,
+				"y": 3012,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
 				"x": 0,
 				"y": 3514,
 				"w": 394,
@@ -625,6 +688,123 @@
 			"frame": {
 				"x": 2364,
 				"y": 3514,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 2758,
+				"y": 3514,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 3152,
+				"y": 3514,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 3546,
+				"y": 3514,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 0,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 394,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 788,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 1182,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 1576,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 1970,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 2364,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 2758,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 3152,
+				"y": 4016,
+				"w": 394,
+				"h": 502
+			},
+			"duration": 33
+		},
+		{
+			"frame": {
+				"x": 3546,
+				"y": 4016,
 				"w": 394,
 				"h": 502
 			},
@@ -634,21 +814,21 @@
 	"meta": {
 		"app": "https://pixelover.io",
 		"version": "0.14.5.1",
-		"filepath": "C:/Users/jaked/Downloads/ArmaturemixamocomLayer0/littleman-take_export_ArmaturemixamocomLayer0_dir2.png",
+		"filepath": "C:/Users/jaked/Downloads/ArmaturemixamocomLayer0/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir8.png",
 		"frameAnimations": [
 			{
 				"name": "ArmaturemixamocomLayer0",
 				"fps": 30,
 				"speed_scale": 1,
 				"from": 0,
-				"to": 69
+				"to": 89
 			}
 		],
 		"size": {
-			"w": 3546,
-			"h": 4016
+			"w": 3940,
+			"h": 4518
 		},
 		"view": "Preview",
-		"direction": 1
+		"direction": 7
 	}
 }

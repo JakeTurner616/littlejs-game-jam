@@ -2613,50 +2613,6 @@
                  "width":0,
                  "x":536.25,
                  "y":697.75
-                }, 
-                {
-                 "height":0,
-                 "id":290,
-                 "name":"",
-                 "polygon":[
-                        {
-                         "x":0,
-                         "y":0
-                        }, 
-                        {
-                         "x":-107.75,
-                         "y":-109.25
-                        }, 
-                        {
-                         "x":-55.75,
-                         "y":-110.25
-                        }, 
-                        {
-                         "x":51,
-                         "y":-2
-                        }],
-                 "properties":[
-                        {
-                         "name":"itemId",
-                         "type":"string",
-                         "value":"rusty_key_test"
-                        }, 
-                        {
-                         "name":"name",
-                         "type":"string",
-                         "value":"bookcase_test"
-                        }, 
-                        {
-                         "name":"requireWalkUp",
-                         "type":"bool",
-                         "value":true
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":550.5,
-                 "y":811.5
                 }],
          "opacity":1,
          "type":"objectgroup",
