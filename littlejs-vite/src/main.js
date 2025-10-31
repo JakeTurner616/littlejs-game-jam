@@ -41,6 +41,16 @@ const playerTextures = [
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir6.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir7.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir8.png',
+
+  // Take (8 directions)
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir1.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir2.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir3.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir4.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir5.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir6.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir7.png',
+  '/assets/little-man/littleman-take/littleman-take_export_ArmaturemixamocomLayer0_dir8.png',
 ];
 
 // ──────────────────────────────────────────────

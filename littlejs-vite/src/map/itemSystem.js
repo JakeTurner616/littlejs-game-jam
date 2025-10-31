@@ -1,8 +1,8 @@
-// src/map/itemSystem.js — ✅ requireWalkUp now navigates correctly without blocking click
+// src/map/itemSystem.js — 🧩 Atlas-based "take" animation integration for object pickup (fixed delayed trigger)
 'use strict';
 import {
   vec2, drawLine, Color, screenToWorld, mousePosScreen,
-  mouseWasPressed, drawCanvas2D, clamp
+  mouseWasPressed, drawCanvas2D, clamp, ParticleEmitter
 } from 'littlejsengine';
 import { tmxPxToWorld } from './isoMath.js';
 import { requestPointer } from '../ui/CursorManager.js';
@@ -95,11 +95,10 @@ export class ItemSystem {
 
   update(player) {
     if (!this.enabled) return;
-
     const feet = player.pos.add(player.feetOffset);
     const worldMouse = screenToWorld(mousePosScreen);
-
     let newHover = null;
+
     for (const item of this.items) {
       if (item.taken) continue;
       if (item.polygon && pointInPolygon(worldMouse, item.polygon)) {
@@ -113,14 +112,12 @@ export class ItemSystem {
       this.lastHovered = this.hovered;
       this.hovered = newHover;
     }
+
     this.fadeTimer = clamp(this.fadeTimer + (this.hovered ? 1 : -1) / 20, 0, 1);
 
-    /*─────────────────────────────
-      ✅ Click-to-walk via nearest reachable ManeuverNode (click-consume aware)
-    ─────────────────────────────*/
+    // 🟡 Click-to-walk logic (rerouted through ManeuverNodes)
     if (mouseWasPressed(0) && this.hovered && !this.hovered.taken) {
-      window.__clickConsumed = true; // 🚫 prevent default click-move this frame
-
+      window.__clickConsumed = true;
       const item = this.hovered;
       const nodes = window.scene?.map?.maneuverNodes || [];
 
@@ -142,37 +139,53 @@ export class ItemSystem {
               break;
             }
           }
-
           if (reachableNode)
-            console.log(`[ItemSystem] Path to ${item.itemId} blocked — rerouting via ManeuverNode ${reachableNode.id}`);
+            console.log(`[ItemSystem] Path to ${item.itemId} rerouted via node ${reachableNode.id}`);
           else
-            console.warn(`[ItemSystem] No reachable ManeuverNode found for ${item.itemId}`);
+            console.warn(`[ItemSystem] No reachable node for ${item.itemId}`);
         }
 
         if (path?.length) {
+          // assign movement but delay pickup until arrival
           player.path = path;
           player.pendingPickup = item;
           player.destinationMarker = item.pos;
           player.markerAlpha = 1.0;
           player.markerScale = 1.0;
-        } else {
-          console.warn(`[ItemSystem] Cannot reach ${item.itemId} — all nodes blocked`);
-        }
-      } else {
-        this.pickup(player, item);
-      }
+
+          // 💫 restore particle emitter
+          if (player.markerEmitter) {
+            player.markerEmitter.emitRate = 0;
+            player.markerEmitter.emitTime = 0;
+            player.markerEmitter = null;
+          }
+          player.markerEmitter = new ParticleEmitter(
+            item.pos, 0, 0.6, 0, 6, 0.2, undefined,
+            new Color(0.9, 0.75, 0.3, 0.45),
+            new Color(0.8, 0.6, 0.25, 0.4),
+            new Color(0.4, 0.1, 0.0, 0.0),
+            new Color(0.2, 0.0, 0.0, 0.0),
+            1.5, 0.06, 0.02, 0.02, 0,
+            0.98, 1, 0, 0.2, 0.15,
+            0.1, false, true, true, 1e9
+          );
+        } else console.warn(`[ItemSystem] Cannot reach ${item.itemId}`);
+      } else this.pickup(player, item);
     }
 
-    // 🚶 Auto-pickup when player arrives
+    // 🚶 Auto-pickup only when player has fully arrived
     if (player.pendingPickup) {
       const target = player.pendingPickup;
-      if (!target.taken && feet.distance(target.pos) < 0.8) {
+      const dist = feet.distance(target.pos);
+      const arrived = dist < 0.8 && player.path.length === 0;
+      if (!target.taken && arrived) {
+        console.log(`[ItemSystem] ✅ Player arrived at ${target.itemId} — triggering pickup`);
         player.pendingPickup = null;
         this.pickup(player, target);
       }
     }
 
-    // Manual interact pickup
+    // Manual interact key
     for (const item of this.items)
       if (!item.taken && item.requireWalkUp && feet.distance(item.pos) < 0.8 && player.interactPressed)
         this.pickup(player, item);
@@ -183,18 +196,41 @@ export class ItemSystem {
   pickup(player, item) {
     if (item.taken) return;
     item.taken = true;
-    player.state = 'take';
-    player.frameIndex = 0;
-    player.frameTimer = 0;
-    player.currentAnimKey = `take_${player.direction + 1}`;
-    player.frozen = true;
     this.activeTintTimer = 0.25;
 
-    setTimeout(() => {
-      player.frozen = false;
-      console.log(`[ItemSystem] Picked up ${item.itemId}`);
-      this.onPickup?.(item);
-    }, 1200);
+    // 🧊 freeze movement but allow animation
+    player.frozen = true;
+    player.animating = true;
+
+    const takeKey = `take_${player.direction + 1}`;
+
+    // 🧩 Start the atlas-based take animation
+    if (player.frames[takeKey]) {
+      console.log(`[ItemSystem] 🔹 Starting take animation for ${item.itemId} (dir ${player.direction + 1})`);
+
+      player.state = 'take';
+      player.frameIndex = 0;
+      player.frameTimer = 0;
+      player.currentAnimKey = takeKey;
+
+      player.onceAnimationComplete = () => {
+        console.log(`[ItemSystem] ✅ Take animation finished for ${item.itemId}`);
+        player.frozen = false;
+        player.animating = false;
+        player.state = 'idle';
+        player.frameIndex = 0;
+        player.frameTimer = 0;
+        player.currentAnimKey = `idle_${player.direction + 1}`;
+        this.onPickup?.(item);
+      };
+    } else {
+      console.warn(`[ItemSystem] Missing take animation for dir ${player.direction + 1}`);
+      setTimeout(() => {
+        player.frozen = false;
+        player.animating = false;
+        this.onPickup?.(item);
+      }, 1200);
+    }
   }
 
   drawDebug() {

@@ -1,4 +1,4 @@
-// src/character/playerController.js — 🧍 sprite bounds + debug rect
+// src/character/playerController.js — 🧍 sprite bounds + proper take animation support (with debug)
 'use strict';
 import {
   vec2, keyIsDown, timeDelta, Color, setCameraPos,
@@ -11,7 +11,7 @@ import { pointInsideAnyCollider } from './playerCollision.js';
 import { isDebugMapEnabled } from '../map/mapRenderer.js';
 
 export class PlayerController {
-  constructor(pos = vec2(0, 0), textureCfg = { idleStartIndex: 0, walkStartIndex: 8 }, ppu = 128) {
+  constructor(pos = vec2(0, 0), textureCfg = {}, ppu = 128) {
     Object.assign(this, {
       pos: vec2(pos.x, pos.y),
       ppu,
@@ -24,7 +24,12 @@ export class PlayerController {
       frames: {},
       durations: {},
       ready: false,
-      textureCfg,
+      textureCfg: {
+        idleStartIndex: 0,
+        walkStartIndex: 8,
+        takeStartIndex: 16, // ✅ Ensure take animation index exists
+        ...textureCfg
+      },
       currentAnimKey: '',
       mapColliders: [],
       feetOffset: vec2(0, 0.45),
@@ -41,7 +46,10 @@ export class PlayerController {
       markerAlpha: 0,
       markerScale: 1,
       markerTimer: 0,
-      noclip: false
+      noclip: false,
+      frozen: false,
+      animating: false,
+      onceAnimationComplete: null
     });
   }
 
@@ -51,9 +59,15 @@ export class PlayerController {
 
   update() {
     if (!this.ready) return;
-    handlePlayerMovement(this);
+
+    // ⛔ Skip movement if frozen for item pickup animation
+    if (!this.frozen)
+      handlePlayerMovement(this);
+
     handlePlayerAnimation(this);
-    if (!window.scene?.cinematicMode) setCameraPos(this.pos);
+
+    if (!window.scene?.cinematicMode)
+      setCameraPos(this.pos);
   }
 
   pointInsideAnyCollider(p) {
@@ -77,13 +91,34 @@ export class PlayerController {
     };
   }
 
-  draw() {
+   draw() {
     if (!this.ready) return;
+
+    // 🧩 One-frame visual buffer: render last take frame before switching to idle
+    if (this.deferIdleSwitch && this.lastTakeFrame) {
+      const f = this.lastTakeFrame;
+      const texIndex = this.currentTextureIndex();
+      const tex = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), texIndex);
+      const s = vec2((f.w / this.ppu) * 256 / 504, (f.h / this.ppu) * 256 / 504);
+
+      console.log(`[DrawBuffer] rendering deferred take frame (${f.w}x${f.h}) tex=${texIndex}`);
+      this.drawShadow();
+      drawTile(this.pos.add(vec2(0, 0.5)), s, tex, undefined, 0, 0, Color.white);
+
+      this.deferIdleSwitch = false;   // ✅ clear after one buffered render
+      this.lastTakeFrame = null;
+      return;
+    }
+
     const f = this.currentFrames()[this.frameIndex];
     if (!f) return;
 
-    const tex = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), this.currentTextureIndex());
+    const texIndex = this.currentTextureIndex();
+    const tex = new TileInfo(vec2(f.x, f.y), vec2(f.w, f.h), texIndex);
     const s = vec2((f.w / this.ppu) * 256 / 504, (f.h / this.ppu) * 256 / 504);
+
+    //console.log(`[Draw] state=${this.state} frame=(${f.w}x${f.h}) tex=${texIndex} size=(${s.x.toFixed(3)}, ${s.y.toFixed(3)}) pos=(${this.pos.x.toFixed(2)}, ${this.pos.y.toFixed(2)})`);
+
     this.drawShadow();
     drawTile(this.pos.add(vec2(0, 0.5)), s, tex, undefined, 0, 0, Color.white);
 
@@ -112,10 +147,25 @@ export class PlayerController {
   buildSmartPath(target) { return buildSmartPath(this, target); }
   currentFrames() { return this.frames[`${this.state}_${this.direction + 1}`] || []; }
 
+  /** Return correct texture index for each animation type */
   currentTextureIndex() {
-    const base = this.state === 'walk'
-      ? this.textureCfg.walkStartIndex
-      : this.textureCfg.idleStartIndex;
-    return base + this.direction;
+    const { idleStartIndex, walkStartIndex, takeStartIndex } = this.textureCfg;
+    const dir = this.direction || 0;
+    let index;
+
+    switch (this.state) {
+      case 'walk': index = walkStartIndex + dir; break;
+      case 'take': index = takeStartIndex + dir; break;
+      default: index = idleStartIndex + dir; break;
+    }
+
+    if (isNaN(index) || index < 0) {
+      console.warn(`[PlayerController] ⚠️ Invalid texture index (${index}) for state "${this.state}"`);
+      index = idleStartIndex; // fallback
+    }
+
+    //console.log(`[TextureDebug] state=${this.state} dir=${dir} → texIndex=${index}`);
+    return index;
   }
 }
+
