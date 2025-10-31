@@ -1,4 +1,4 @@
-// src/audio/AudioManager.js
+// src/audio/AudioManager.js — ✅ with proper preloaded sounds
 'use strict';
 import { SoundWave } from 'littlejsengine';
 
@@ -27,7 +27,7 @@ export class AudioManager {
     MUSIC — STREAMED VIA <audio>
   ────────────────────────────────────────────────*/
   playMusic(path, volume = 0.5, loop = true) {
-    this.stopMusic(); // ensures only one audio element active
+    this.stopMusic();
 
     const audio = new Audio(path);
     audio.loop = loop;
@@ -36,7 +36,6 @@ export class AudioManager {
     audio.preload = 'auto';
     audio.autoplay = false;
 
-    // small inline unlock function (no closure allocations each play)
     const unlock = () => {
       audio.play().then(() => {
         this.musicStartTime = performance.now() * 0.001;
@@ -46,8 +45,6 @@ export class AudioManager {
     };
     document.addEventListener('pointerdown', unlock, { once: true });
     document.addEventListener('keydown', unlock, { once: true });
-
-    // start loading immediately
     audio.load();
     this.musicElement = audio;
   }
@@ -68,3 +65,7 @@ export class AudioManager {
 }
 
 export const audioManager = new AudioManager();
+
+// ✅ Preload global SFX
+audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
+audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');

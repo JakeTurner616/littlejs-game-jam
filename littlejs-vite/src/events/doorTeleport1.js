@@ -1,4 +1,4 @@
-// src/events/doorTeleport1.js — ✅ now loads /assets/map/inside.tmj on open
+// src/events/doorTeleport1.js — ✅ door open sound sync
 'use strict';
 import { keyWasPressed } from 'littlejsengine';
 import { audioManager } from '../audio/AudioManager.js';
@@ -10,7 +10,7 @@ export const event = {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
 
-    // Wait for any visible monologue to finish
+    // Wait until monologue finishes
     await new Promise((resolve) => {
       const check = () => {
         if (!scene.dialog.visible) return resolve();
@@ -55,51 +55,33 @@ export const event = {
             waitForSpace();
           });
           showOptions();
-        }
-
-        else if (value === 'open') {
-          // 🔑 Door opening logic
+        } else if (value === 'open') {
           scene.dialog.visible = false;
 
-          // 🎧 Play door open sound
-          try {
-            audioManager.playSound('door_open', null, 1.0);
-            console.log('[doorTeleport1] Door open sound played');
-          } catch (err) {
-            console.warn('[doorTeleport1] Failed to play door sound:', err);
-          }
+          // 🎧 Play door open sound immediately before fog fade
+          audioManager.playSound('door_open', null, 1.0);
+          console.log('[doorTeleport1] Door open sound played');
 
-          // 🌫️ Fade out fog before transition
-          if (scene.fog) {
-            scene.fog.fadeOut();
-            console.log('[doorTeleport1] Fog fade-out triggered');
-          }
+          // 🌫️ Fade fog and adjust lighting
+          scene.fog?.fadeOut();
+          scene.lighting?.setRainMode('background');
+          scene.lighting?.setLightningMode('background');
+          scene.lighting.lightningEnabled = false;
 
-          // 🕯️ Adjust lighting for indoor mode
-          if (scene.lighting) {
-            scene.lighting.setRainMode('background');
-            scene.lighting.setLightningMode('background');
-            scene.lighting.lightningEnabled = false;
-            console.log('[doorTeleport1] Switched to indoor lighting (background mode)');
-          }
+          // 🗺️ Load new map
+          await scene.loadNewMap('/assets/map/inside.tmj', 9.857, 11.983);
 
-          // 🗺️ Switch to indoor map
-          console.log('[doorTeleport1] Loading /assets/map/inside.tmj …');
-          await scene.loadNewMap('/assets/map/inside.tmj', 9.857, 11.983); // 🎯 adjust spawnC,R as needed
-
-          // 🎬 Show short entry monologue
+          // 🎬 Entry monologue
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             'The dusty door creaks open, revealing a dimly lit room beyond.\n\n' +
             'As you step inside, the air grows colder, and a sense of unease washes over you.'
           );
           scene.dialog.visible = true;
-
           player.frozen = false;
         }
       });
     };
-
     showOptions();
   },
 };

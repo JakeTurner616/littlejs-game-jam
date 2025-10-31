@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration
+// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration + timed jump scare sync
 'use strict';
 import {
   vec2, drawText, hsl
@@ -59,6 +59,9 @@ export class GameScene {
     this.player.direction = 4;
     this.player.path = [];
 
+    // ──────────────────────────────────────────────
+    // Object Systems
+    // ──────────────────────────────────────────────
     if (this.objects) {
       this.objects.map = newMap;
       this.objects.objects.length = 0;
@@ -69,69 +72,85 @@ export class GameScene {
       await this.objects.load();
     }
 
+    // ──────────────────────────────────────────────
+    // Object Triggers + Jump Scare Logic (timed)
+    // ──────────────────────────────────────────────
     if (this.objectTriggers) {
       this.objectTriggers.map = newMap;
       this.objectTriggers.triggers.length = 0;
       this.objectTriggers.enabled = true;
       this.objectTriggers.loadFromMap();
     } else {
-      this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
-        if (trigger?.eventId === 'witch_spawn') {
-          this.witchManager.spawn(trigger);
-          audioManager.playSound('jump_scare', null, 0.5);
-        } else if (trigger?.eventId && EventRegistry[trigger.eventId])
-          EventRegistry[trigger.eventId].execute(this, this.player);
-      });
+this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
+  console.log('[ObjectTrigger] Event fired:', trigger?.eventId);
+
+  if (trigger?.eventId === 'witch_spawn') {
+    console.log('[ObjectTrigger] ✅ witch_spawn detected');
+    this.witchManager.spawn(trigger);
+    setTimeout(() => {
+      audioManager.playSound('jump_scare', null, 0.9);
+      console.log('[GameScene] 🎧 Jump scare sound triggered');
+    }, 20);
+  } 
+  else if (trigger?.eventId && EventRegistry[trigger.eventId]) {
+    EventRegistry[trigger.eventId].execute(this, this.player);
+  }
+});
       this.objectTriggers.loadFromMap();
     }
 
-if (this.events) {
-  // Re-initialize cleanly on map switch
-  this.events.map = newMap;
-  this.events.enabled = true;
-  this.events.hovered = null;
-  this.events.lastHovered = null;
-  this.events.fadeTimer = 0;
-  this.events.activeTintTimer = 0;
+    // ──────────────────────────────────────────────
+    // Polygon Events
+    // ──────────────────────────────────────────────
+    if (this.events) {
+      this.events.map = newMap;
+      this.events.enabled = true;
+      this.events.hovered = null;
+      this.events.lastHovered = null;
+      this.events.fadeTimer = 0;
+      this.events.activeTintTimer = 0;
 
-  // 🚨 Reset polygon reference (critical!)
-  if (!newMap.eventPolygons?.length)
-    console.warn('[PolygonEventSystem] newMap has no eventPolygons');
-} else {
-  this.events = new PolygonEventSystem(newMap, (poly) => {
-    if (poly?.eventId && EventRegistry[poly.eventId]) {
-      EventRegistry[poly.eventId].execute(this, this.player);
-      this.fogOfWar.revealByEvent(poly.eventId);
+      if (!newMap.eventPolygons?.length)
+        console.warn('[PolygonEventSystem] newMap has no eventPolygons');
+    } else {
+      this.events = new PolygonEventSystem(newMap, (poly) => {
+        if (poly?.eventId && EventRegistry[poly.eventId]) {
+          EventRegistry[poly.eventId].execute(this, this.player);
+          this.fogOfWar.revealByEvent(poly.eventId);
+        }
+      });
     }
-  });
-}
+    this.events.setTriggerSystem(this.objectTriggers);
 
-// Ensure trigger link after reset
-this.events.setTriggerSystem(this.objectTriggers);
+    // ──────────────────────────────────────────────
+    // Item System
+    // ──────────────────────────────────────────────
+    if (this.items) {
+      this.items.map = newMap;
+      this.items.items.length = 0;
+      this.items.enabled = true;
+      this.items.loadFromMap();
+    } else {
+      this.items = new ItemSystem(newMap, PPU, (item) => {
+        this.dialog.setMode('monologue');
+        this.dialog.setText(`You picked up: ${item.itemId}`);
+        this.dialog.visible = true;
+      });
+      this.items.loadFromMap();
+    }
 
-// 📦 Item system setup
-if (this.items) {
-  this.items.map = newMap;
-  this.items.items.length = 0;
-  this.items.enabled = true;
-  this.items.loadFromMap();
-} else {
-  this.items = new ItemSystem(newMap, PPU, (item) => {
-    this.dialog.setMode('monologue');
-    this.dialog.setText(`You picked up: ${item.itemId}`);
-    this.dialog.visible = true;
-  });
-  this.items.loadFromMap();
-}
+    // ──────────────────────────────────────────────
+    // Fog of War Setup
+    // ──────────────────────────────────────────────
+    if (!this.fogOfWar) {
+      this.fogOfWar = new FogOfWarSystem();
+    }
+    this.fogOfWar.loadFromMap(newMap);
+    window.fogOfWar = this.fogOfWar;
 
-// 🌫️ Fog of War setup
-if (!this.fogOfWar) {
-  this.fogOfWar = new FogOfWarSystem();
-}
-this.fogOfWar.loadFromMap(newMap);
-window.fogOfWar = this.fogOfWar; // optional console access
-
-    // 🌧️ Adjust environment depending on map name
+    // ──────────────────────────────────────────────
+    // Environment Modes
+    // ──────────────────────────────────────────────
     if (mapPath.includes('inside')) {
       this.lighting.setRainMode('background');
       this.lighting.setLightningMode('background');
@@ -153,6 +172,9 @@ window.fogOfWar = this.fogOfWar; // optional console access
     this.ready = true;
   }
 
+  // ──────────────────────────────────────────────
+  // Lightning Scheduling
+  // ──────────────────────────────────────────────
   _scheduleNextLightning() {
     const intervals = [4, 6, 8, 10, 12, 15];
     this._nextLightning = intervals[(Math.random() * intervals.length) | 0];
@@ -168,6 +190,9 @@ window.fogOfWar = this.fogOfWar; // optional console access
     }
   }
 
+  // ──────────────────────────────────────────────
+  // Scene Entry
+  // ──────────────────────────────────────────────
   async onEnter() {
     const PPU = 128;
     const MAP_PATH = '/assets/map/outside.tmj';
@@ -192,16 +217,17 @@ window.fogOfWar = this.fogOfWar; // optional console access
     this.ready = true;
   }
 
+  // ──────────────────────────────────────────────
+  // Update Loop
+  // ──────────────────────────────────────────────
   isLoaded() { return this.ready && this.player?.ready && this.map; }
 
   update() {
     if (!this.isLoaded()) return;
     const dt = 1 / 60;
 
-    // 🔁 Start-of-frame: reset desired cursor to default
     cursorBeginFrame();
 
-    // Paint system
     if (!this._paintInitialized && this.player?.ready) {
       updatePaintSystem(0);
       this._paintInitialized = true;
@@ -222,10 +248,12 @@ window.fogOfWar = this.fogOfWar; // optional console access
     this.lighting.update(dt);
     this.fog.update(dt, this.player.pos);
 
-    // ✅ End-of-frame: apply the strongest requested cursor (pointer if any system asked)
     cursorApply();
   }
 
+  // ──────────────────────────────────────────────
+  // Render Loop
+  // ──────────────────────────────────────────────
   render() {
     if (!this.isLoaded()) {
       drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
@@ -243,7 +271,7 @@ window.fogOfWar = this.fogOfWar; // optional console access
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
     this.objects?.draw();
 
-    // 🕳️ Render fog of war below entities, above map
+    // 🕳️ Fog of war
     this.fogOfWar.render();
 
     const stack = [...this.witchManager.entitiesAbove, this.player];
