@@ -1,7 +1,7 @@
-// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration + timed jump scare sync
+// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration + timed jump scare sync + Resident Evil–style inventory UI
 'use strict';
 import {
-  vec2, drawText, hsl
+  vec2, drawText, hsl, keyWasPressed
 } from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
 import { renderMap, setDebugMapEnabled } from '../map/mapRenderer.js';
@@ -9,6 +9,7 @@ import { PolygonEventSystem } from '../map/polygonEvents.js';
 import { ObjectTriggerEventSystem } from '../map/objectTriggers.js';
 import { PlayerController } from '../character/playerController.js';
 import { DialogBox } from '../ui/DialogBox.js';
+import { InventoryMenu } from '../ui/InventoryMenu.js';
 import { EventRegistry } from '../map/eventRegistry.js';
 import { LightingSystem } from '../environment/lightingSystem.js';
 import { FogSystem } from '../environment/FogSystem.js';
@@ -32,6 +33,7 @@ export class GameScene {
     this.player = null;
     this.objects = null;
     this.dialog = new DialogBox('monologue');
+    this.inventory = new InventoryMenu(); // 🎒 New inventory system
     this.lighting = new LightingSystem();
     this.fog = new FogSystem();
     this.fogOfWar = new FogOfWarSystem();
@@ -43,6 +45,12 @@ export class GameScene {
     this.debugClickEnabled = true;
     this._lightTimer = 0;
     this._nextLightning = 0;
+
+    this.inventory.onUse = (item) => {
+      this.dialog.setMode('monologue');
+      this.dialog.setText(`You used the ${item.name}.`);
+      this.dialog.visible = true;
+    };
   }
 
   async loadNewMap(mapPath, spawnC, spawnR) {
@@ -81,21 +89,20 @@ export class GameScene {
       this.objectTriggers.enabled = true;
       this.objectTriggers.loadFromMap();
     } else {
-this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
-  console.log('[ObjectTrigger] Event fired:', trigger?.eventId);
+      this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
+        console.log('[ObjectTrigger] Event fired:', trigger?.eventId);
 
-  if (trigger?.eventId === 'witch_spawn') {
-    console.log('[ObjectTrigger] ✅ witch_spawn detected');
-    this.witchManager.spawn(trigger);
-    setTimeout(() => {
-      audioManager.playSound('jump_scare', null, 0.9);
-      console.log('[GameScene] 🎧 Jump scare sound triggered');
-    }, 20);
-  } 
-  else if (trigger?.eventId && EventRegistry[trigger.eventId]) {
-    EventRegistry[trigger.eventId].execute(this, this.player);
-  }
-});
+        if (trigger?.eventId === 'witch_spawn') {
+          console.log('[ObjectTrigger] ✅ witch_spawn detected');
+          this.witchManager.spawn(trigger);
+          setTimeout(() => {
+            audioManager.playSound('jump_scare', null, 0.9);
+            console.log('[GameScene] 🎧 Jump scare sound triggered');
+          }, 20);
+        } else if (trigger?.eventId && EventRegistry[trigger.eventId]) {
+          EventRegistry[trigger.eventId].execute(this, this.player);
+        }
+      });
       this.objectTriggers.loadFromMap();
     }
 
@@ -135,6 +142,9 @@ this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
         this.dialog.setMode('monologue');
         this.dialog.setText(`You picked up: ${item.itemId}`);
         this.dialog.visible = true;
+
+        // 🎒 Automatically add to inventory
+        this.inventory.addItem(item.itemId, item.itemId, null, `A mysterious ${item.itemId}.`);
       });
       this.items.loadFromMap();
     }
@@ -214,6 +224,9 @@ this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
     window.scene = this;
     window.debug = DebugStateManager;
     window.player = this.player;
+
+
+
     this.ready = true;
   }
 
@@ -225,7 +238,6 @@ this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
   update() {
     if (!this.isLoaded()) return;
     const dt = 1 / 60;
-
     cursorBeginFrame();
 
     if (!this._paintInitialized && this.player?.ready) {
@@ -233,6 +245,13 @@ this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
       this._paintInitialized = true;
     }
     updatePaintSystem(dt);
+
+    // 🎒 Inventory toggle
+    if (keyWasPressed('KeyI'))
+      console.log('[InventoryMenu] Toggled inventory menu'),
+      this.inventory.toggle();
+
+    this.inventory.update(dt);
 
     const playerFeet = this.player.pos.add(this.player.feetOffset);
     this.objects?.update(playerFeet);
@@ -287,6 +306,9 @@ this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
       this.lighting.renderOverlay(cam);
 
     this.fog.render(this.player.pos, 'overlay');
+
+    // UI Layers
     if (this.dialog.visible) this.dialog.draw();
+    this.inventory.draw();
   }
 }

@@ -1,4 +1,4 @@
-// src/main.js
+// src/main.js — 🧩 Correct overlay-phase draw handling
 'use strict';
 import {
   engineInit,
@@ -13,16 +13,10 @@ import { preloadPortraits } from './util/portraitCache.js';
 
 setShowSplashScreen(false);
 setTileFixBleedScale(0.5);
-
-// Global sound configuration
 setSoundVolume(0.6);
 setSoundDefaultRange(40);
 
-// ──────────────────────────────────────────────
-// 1️⃣ LITTLE MAN (player)
-// ──────────────────────────────────────────────
 const playerTextures = [
-  // Idle (8 directions)
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir1.png',
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir2.png',
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir3.png',
@@ -31,8 +25,6 @@ const playerTextures = [
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir6.png',
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir7.png',
   '/assets/little-man/littleman-idle/littleman-idle-small_export_dir8.png',
-
-  // Walk (8 directions)
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir1.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir2.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir3.png',
@@ -41,8 +33,6 @@ const playerTextures = [
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir6.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir7.png',
   '/assets/little-man/littleman-walking/littleman-walking-small_export_dir8.png',
-
-  // Take (8 directions)
   '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir1.png',
   '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir2.png',
   '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir3.png',
@@ -53,13 +43,11 @@ const playerTextures = [
   '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir8.png',
 ];
 
-// ──────────────────────────────────────────────
-// 2️⃣ BOXER (melee character)
-// ──────────────────────────────────────────────
-const MapAssets = [
+const mapAssets = [
   '/assets/map/inside.tmj',
   '/assets/map/outside.tmj',
   '/assets/map/indoor-room.tmj',
+  '/assets/map/cornfield.tmj',
 ];
 
 const portraitTextures = [
@@ -67,21 +55,18 @@ const portraitTextures = [
   '/assets/portraits/window_face.png',
 ];
 preloadPortraits(portraitTextures);
+
 const witchTextures = [
   '/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
 ];
 
-// Combined preload list
 const preloadImages = [
   ...playerTextures,
-  ...MapAssets,
+  ...mapAssets,
   ...portraitTextures,
   ...witchTextures,
 ];
 
-// ──────────────────────────────────────────────
-// ENGINE INIT
-// ──────────────────────────────────────────────
 engineInit(
   gameInit,
   gameUpdate,
@@ -101,12 +86,15 @@ function gameUpdatePost() {
   sceneManager.updatePost();
 }
 function gameRender() {
-  sceneManager.render();
+  const s = sceneManager.current;
+  if (s?.renderWorld) s.renderWorld();
+  else sceneManager.render();
 }
 function gameRenderPost() {
-  sceneManager.renderPost();
+  const s = sceneManager.current;
+  if (s?.renderUI) s.renderUI();
+  else sceneManager.renderPost();
 }
 
-// Export texture index bases
 export const PLAYER_TEXTURE_BASE = 0;
 export const BOXER_TEXTURE_BASE = playerTextures.length;
