@@ -564,6 +564,12 @@
                          "x":862.333333333333,
                          "y":1.66666666666674
                         }],
+                 "properties":[
+                        {
+                         "name":"revealOnEventId",
+                         "type":"string",
+                         "value":"door_teleport_1"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -573,7 +579,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -2039,9 +2045,64 @@
          "visible":true,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":39,
+         "name":"Items",
+         "objects":[
+                {
+                 "height":0,
+                 "id":187,
+                 "name":"",
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":4.5,
+                         "y":49.5
+                        }, 
+                        {
+                         "x":66,
+                         "y":52
+                        }, 
+                        {
+                         "x":53,
+                         "y":-7
+                        }],
+                 "properties":[
+                        {
+                         "name":"itemId",
+                         "type":"string",
+                         "value":"outside_test"
+                        }, 
+                        {
+                         "name":"name",
+                         "type":"string",
+                         "value":"outside_test"
+                        }, 
+                        {
+                         "name":"requireWalkUp",
+                         "type":"bool",
+                         "value":true
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":148.5,
+                 "y":1483.5
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
         }],
- "nextlayerid":39,
- "nextobjectid":187,
+ "nextlayerid":40,
+ "nextobjectid":188,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -1,4 +1,4 @@
-// src/character/playerMovement.js
+// src/character/playerMovement.js — 🧭 click-consume aware
 'use strict';
 import {
   keyIsDown, mouseWasPressed, screenToWorld, mousePosScreen,
@@ -7,36 +7,27 @@ import {
 
 export function handlePlayerMovement(p) {
   const move = vec2(0, 0);
-  let pathCanceled = false; // 🧭 track interruptions
+  let pathCanceled = false;
 
-  // 🟡 Click-to-move (Particle-based destination marker)
-  if (mouseWasPressed(0)) {
+  // 🟡 Click-to-move (skip if another system consumed the click)
+  if (mouseWasPressed(0) && !window.__clickConsumed) {
     const target = screenToWorld(mousePosScreen);
     p.clickTarget = target;
     const path = p.buildSmartPath(target);
     p.path = path;
 
-    // Destroy any existing emitter first
     if (p.markerEmitter) {
       p.markerEmitter.emitRate = 0;
       p.markerEmitter.emitTime = 0;
       p.markerEmitter = null;
     }
 
-    // ✅ Only create particle marker if path is valid
     if (path && path.length > 0) {
       p.destinationMarker = target;
       p.markerAlpha = 1.0;
 
-      // Create a particle emitter at destination
       p.markerEmitter = new ParticleEmitter(
-        target,             // position
-        0,                  // angle
-        0.6,                // emitSize
-        0,                  // emitTime (0 = infinite)
-        6,                  // emitRate
-        0.2,                // emitCone
-        undefined,
+        target, 0, 0.6, 0, 6, 0.2, undefined,
         new Color(0.9, 0.75, 0.3, 0.45),
         new Color(0.8, 0.6, 0.25, 0.4),
         new Color(0.4, 0.1, 0.0, 0.0),
@@ -46,11 +37,13 @@ export function handlePlayerMovement(p) {
         0.1, false, true, true, 1e9
       );
     } else {
-      // No valid path → clear marker
       p.destinationMarker = null;
       p.markerAlpha = 0;
     }
   }
+
+  // ✅ reset click consumption after handling
+  window.__clickConsumed = false;
 
   // Keyboard input cancels auto-path navigation
   const keyMove =
@@ -143,17 +136,15 @@ export function handlePlayerMovement(p) {
         p.destinationMarker = null;
         p.markerAlpha = 0;
 
-        // Stop and remove emitter smoothly
         if (p.markerEmitter) {
           p.markerEmitter.emitRate = 0;
-          p.markerEmitter.emitTime = 0.4; // fade-out for 0.4s
+          p.markerEmitter.emitTime = 0.4;
           p.markerEmitter = null;
         }
       }
     }
   }
 
-  // 🩶 If movement path was interrupted mid-way, fade marker emitter too
   if (pathCanceled && p.markerEmitter) {
     p.markerEmitter.emitRate = 0;
     p.markerEmitter.emitTime = 0.5;

@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js — 🌧️ Dynamic environment modes (outside → overlay, inside → background)
+// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration
 'use strict';
 import {
   vec2, drawText, hsl
@@ -20,6 +20,8 @@ import { audioManager } from '../audio/AudioManager.js';
 import { isoToWorld } from '../map/isoMath.js';
 import { DebugStateManager } from '../debug/DebugStateManager.js';
 import { initPaintSystem, updatePaintSystem } from '../map/paintSystem.js';
+import { ItemSystem } from '../map/itemSystem.js';
+import { beginFrame as cursorBeginFrame, apply as cursorApply } from '../ui/CursorManager.js';
 
 setDebugMapEnabled(false);
 
@@ -35,6 +37,7 @@ export class GameScene {
     this.fogOfWar = new FogOfWarSystem();
     this.events = null;
     this.objectTriggers = null;
+    this.items = null;
     this.camera = new CameraController();
     this.witchManager = new WitchManager(this);
     this.debugClickEnabled = true;
@@ -82,17 +85,51 @@ export class GameScene {
       this.objectTriggers.loadFromMap();
     }
 
-    if (this.events) {
-      this.events.map = newMap;
-      this.events.enabled = true;
-    } else {
-      this.events = new PolygonEventSystem(newMap, (poly) => {
-        if (poly?.eventId && EventRegistry[poly.eventId])
-          EventRegistry[poly.eventId].execute(this, this.player);
-      });
-    }
+if (this.events) {
+  // Re-initialize cleanly on map switch
+  this.events.map = newMap;
+  this.events.enabled = true;
+  this.events.hovered = null;
+  this.events.lastHovered = null;
+  this.events.fadeTimer = 0;
+  this.events.activeTintTimer = 0;
 
-    this.events.setTriggerSystem(this.objectTriggers);
+  // 🚨 Reset polygon reference (critical!)
+  if (!newMap.eventPolygons?.length)
+    console.warn('[PolygonEventSystem] newMap has no eventPolygons');
+} else {
+  this.events = new PolygonEventSystem(newMap, (poly) => {
+    if (poly?.eventId && EventRegistry[poly.eventId]) {
+      EventRegistry[poly.eventId].execute(this, this.player);
+      this.fogOfWar.revealByEvent(poly.eventId);
+    }
+  });
+}
+
+// Ensure trigger link after reset
+this.events.setTriggerSystem(this.objectTriggers);
+
+// 📦 Item system setup
+if (this.items) {
+  this.items.map = newMap;
+  this.items.items.length = 0;
+  this.items.enabled = true;
+  this.items.loadFromMap();
+} else {
+  this.items = new ItemSystem(newMap, PPU, (item) => {
+    this.dialog.setMode('monologue');
+    this.dialog.setText(`You picked up: ${item.itemId}`);
+    this.dialog.visible = true;
+  });
+  this.items.loadFromMap();
+}
+
+// 🌫️ Fog of War setup
+if (!this.fogOfWar) {
+  this.fogOfWar = new FogOfWarSystem();
+}
+this.fogOfWar.loadFromMap(newMap);
+window.fogOfWar = this.fogOfWar; // optional console access
 
     // 🌧️ Adjust environment depending on map name
     if (mapPath.includes('inside')) {
@@ -161,6 +198,10 @@ export class GameScene {
     if (!this.isLoaded()) return;
     const dt = 1 / 60;
 
+    // 🔁 Start-of-frame: reset desired cursor to default
+    cursorBeginFrame();
+
+    // Paint system
     if (!this._paintInitialized && this.player?.ready) {
       updatePaintSystem(0);
       this._paintInitialized = true;
@@ -171,6 +212,7 @@ export class GameScene {
     this.objects?.update(playerFeet);
     this.objectTriggers?.update(this.player.pos, this.player.feetOffset);
     this.events?.update();
+    this.items?.update(this.player);
 
     this._updateLightning(dt);
     this.witchManager.update(dt);
@@ -179,6 +221,9 @@ export class GameScene {
     this.dialog.update(dt);
     this.lighting.update(dt);
     this.fog.update(dt, this.player.pos);
+
+    // ✅ End-of-frame: apply the strongest requested cursor (pointer if any system asked)
+    cursorApply();
   }
 
   render() {
@@ -198,10 +243,15 @@ export class GameScene {
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
     this.objects?.draw();
 
+    // 🕳️ Render fog of war below entities, above map
+    this.fogOfWar.render();
+
     const stack = [...this.witchManager.entitiesAbove, this.player];
     stack.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of stack) e?.draw?.();
+
     this.events?.renderHoverOverlay();
+    this.items?.drawDebug();
 
     if (this.lighting.rainRenderMode === 'overlay')
       this.lighting._renderRain(cam, false);

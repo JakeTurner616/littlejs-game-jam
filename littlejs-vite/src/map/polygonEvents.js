@@ -1,15 +1,10 @@
-// src/map/polygonEvents.js — 🧩 Strict prerequisite enforcement + player monologue feedback
+// src/map/polygonEvents.js — hover pointer via CursorManager (centralized)
 'use strict';
 import {
-  mouseWasPressed,
-  mousePosScreen,
-  screenToWorld,
-  drawLine,
-  Color,
-  vec2,
-  drawCanvas2D,
-  clamp,
+  mouseWasPressed, mousePosScreen, screenToWorld,
+  drawLine, Color, vec2, drawCanvas2D, clamp,
 } from 'littlejsengine';
+import { requestPointer } from '../ui/CursorManager.js';
 
 export class PolygonEventSystem {
   constructor(map, onEvent, debug = false) {
@@ -34,19 +29,21 @@ export class PolygonEventSystem {
     const worldMouse = screenToWorld(mousePosScreen);
     let newHover = null;
 
-    for (const poly of this.map.eventPolygons)
+    // 🔍 Hover detection
+    for (const poly of this.map.eventPolygons) {
       if (pointInPolygon(worldMouse, poly.pts)) {
         newHover = poly;
-        document.body.style.cursor = 'pointer';
+        // 👉 Ask the CursorManager for pointer this frame
+        requestPointer();
         break;
       }
+    }
 
-    if (!newHover) document.body.style.cursor = 'default';
+    // Hover transition bookkeeping
     if (newHover !== this.hovered) {
       this.lastHovered = this.hovered;
       this.hovered = newHover;
     }
-
     this.fadeTimer = clamp(this.fadeTimer + (this.hovered ? 1 : -1) / 20, 0, 1);
 
     // 🟡 Click
@@ -58,9 +55,6 @@ export class PolygonEventSystem {
       if (requiresTrigger && this.triggerSystem) {
         const fired = this.triggerSystem.hasFired(requiresTrigger);
         if (!fired) {
-          console.warn(`[PolygonEvent] '${poly.name}' blocked — requires trigger '${requiresTrigger}'`);
-
-          // 🎭 Player feedback via monologue
           const scene = window.scene;
           if (scene?.dialog) {
             const msg = blockedMsg || getDefaultBlockedMessage(poly.eventId, requiresTrigger);
@@ -68,26 +62,20 @@ export class PolygonEventSystem {
             scene.dialog.visible = true;
             scene.dialog.setText(msg);
           }
-
           this.activeTintTimer = 0.25;
-          return; // 🚫 do not fire event
+          return;
         }
       }
 
-      console.log('[PolygonEvent] Triggered:', poly.name, poly.eventId);
-
-      // ✅ Clear any residual monologue before executing new dialogue
+      // ✅ Execute event
       const scene = window.scene;
-      if (scene?.dialog && typeof scene.dialog.clearIfMonologue === 'function') {
-        scene.dialog.clearIfMonologue();
-      }
-
+      if (scene?.dialog?.clearIfMonologue) scene.dialog.clearIfMonologue();
       this.onEvent?.(poly);
       this.activeTintTimer = 0.25;
     }
 
     if (this.activeTintTimer > 0) this.activeTintTimer -= 1 / 60;
-    this.renderHoverOverlay();
+    // (Rendering stays separate; GameScene calls renderHoverOverlay() during render)
   }
 
   renderHoverOverlay() {
@@ -114,9 +102,7 @@ export class PolygonEventSystem {
   }
 }
 
-/*───────────────────────────────────────────────
-  Default monologue messages
-───────────────────────────────────────────────*/
+/* Helpers unchanged */
 function getDefaultBlockedMessage(eventId, prereqId) {
   switch (eventId) {
     case 'window_scene_1':
@@ -128,9 +114,6 @@ function getDefaultBlockedMessage(eventId, prereqId) {
   }
 }
 
-/*───────────────────────────────────────────────
-  Point-in-polygon + fill helpers
-───────────────────────────────────────────────*/
 function pointInPolygon(p, verts) {
   let inside = false;
   for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
