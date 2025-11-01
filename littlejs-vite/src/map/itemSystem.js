@@ -1,4 +1,4 @@
-// src/map/itemSystem.js — 🧩 Atlas-based "take" animation integration for object pickup (fixed delayed trigger)
+// src/map/itemSystem.js — 🧩 Atlas-based "take" animation integration for object pickup + loot particle shimmer
 'use strict';
 import {
   vec2, drawLine, Color, screenToWorld, mousePosScreen,
@@ -190,6 +190,30 @@ export class ItemSystem {
       if (!item.taken && item.requireWalkUp && feet.distance(item.pos) < 0.8 && player.interactPressed)
         this.pickup(player, item);
 
+    // ✨ Loot indicator for unsearched items
+    for (const item of this.items) {
+      if (item.taken) {
+        if (item.lootEmitter) {
+          item.lootEmitter.emitRate = 0;
+          item.lootEmitter.emitTime = 0.3;
+          item.lootEmitter = null;
+        }
+        continue;
+      }
+      if (!item.lootEmitter) {
+        item.lootEmitter = new ParticleEmitter(
+          item.pos, 0, 0.6, 0, 4, 0.2, undefined,
+  new Color(1.0, 0.9, 0.2, 0.5),    // vibrant gold  
+  new Color(1.0, 0.8, 0.0, 0.4),  
+  new Color(1.0, 0.5, 0.0, 0.0),    // fade to orange  
+  new Color(0.8, 0.3, 0.0, 0.0),  
+          1.4, 0.08, 0.02, 0.02, 0,
+          0.98, 1, 0, 0.15, 0.12,
+          0.1, false, true, true, 1e9
+        );
+      }
+    }
+
     if (this.activeTintTimer > 0) this.activeTintTimer -= 1 / 60;
   }
 
@@ -198,13 +222,18 @@ export class ItemSystem {
     item.taken = true;
     this.activeTintTimer = 0.25;
 
+    if (item.lootEmitter) {
+      item.lootEmitter.emitRate = 0;
+      item.lootEmitter.emitTime = 0.3;
+      item.lootEmitter = null;
+    }
+
     // 🧊 freeze movement but allow animation
     player.frozen = true;
     player.animating = true;
 
     const takeKey = `take_${player.direction + 1}`;
 
-    // 🧩 Start the atlas-based take animation
     if (player.frames[takeKey]) {
       console.log(`[ItemSystem] 🔹 Starting take animation for ${item.itemId} (dir ${player.direction + 1})`);
 
