@@ -62,12 +62,7 @@ export class GameScene {
 
       // Add to inventory
       if (item.itemId === 'rusty_key') {
-        this.inventory.addItem(
-          'rusty_key',
-          'RUSTY KEY',
-          '/assets/items/rusty_key.png',
-          'A corroded iron key. It feels rough to the touch.'
-        );
+        this.inventory.addItem('rusty_key', 'RUSTY KEY', '/assets/items/rusty_key.png', 'A corroded iron key.', 1, 1, 2);
       } else {
         this.inventory.addItem(
           item.itemId,
