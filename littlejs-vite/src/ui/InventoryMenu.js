@@ -1,4 +1,4 @@
-// src/ui/InventoryMenu.js — 🧩 Connected-grid Resident Evil–style inventory
+// src/ui/InventoryMenu.js — 🧩 Connected-grid Resident Evil–style inventory (drag, hover info)
 'use strict';
 import {
   overlayContext,
@@ -6,6 +6,7 @@ import {
   keyWasPressed,
   mousePosScreen,
   mouseWasPressed,
+  mouseIsDown,
 } from 'littlejsengine';
 import { TextTheme } from './TextTheme.js';
 import { requestPointer } from './CursorManager.js';
@@ -16,11 +17,13 @@ export class InventoryMenu {
     this.columns = 4;
     this.rows = 3;
     this.slotSize = 80;
-    this.outerMargin = 16;      // only outer padding now
+    this.outerMargin = 16;
     this.fade = 0;
     this.items = [];
     this.selectedIndex = 0;
     this.hoverIndex = -1;
+    this.draggingItem = null;
+    this.dragOffset = { x: 0, y: 0 };
     this.onUse = null;
     this.fontFamily = TextTheme.fontFamily;
     this._iconCache = new Map();
@@ -35,39 +38,28 @@ export class InventoryMenu {
     return img;
   }
 
-  /**
-   * Auto-assigns grid size from image dimensions if not given.
-   * e.g. 80×160 → 1×2, 160×160 → 2×2
-   */
-addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
-  const existing = this.items.find(i => i.id === id);
-  if (existing) {
-    existing.count += count;
-    return;
+  addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
+    const existing = this.items.find(i => i.id === id);
+    if (existing) {
+      existing.count += count;
+      return;
+    }
+    const img = this._ensureImage(iconPath);
+    let w = gridW || 1;
+    let h = gridH || 1;
+    img.onload = () => {
+      w = gridW || Math.max(1, Math.round(img.width / this.slotSize));
+      h = gridH || Math.max(1, Math.round(img.height / this.slotSize));
+      console.log(`[InventoryMenu] 🧩 ${id} size detected: ${w}x${h}`);
+      const item = this.items.find(it => it.id === id);
+      if (item) { item.gridW = w; item.gridH = h; }
+    };
+    this.items.push({
+      id, name, iconPath, iconImage: img, desc, count,
+      gridW: w, gridH: h, slotX: 0, slotY: 0
+    });
   }
 
-  const img = this._ensureImage(iconPath);
-
-  // Use defaults for now (safe single-slot)
-  let w = gridW || 1;
-  let h = gridH || 1;
-
-  // Once image loads, recalculate and update layout
-  img.onload = () => {
-    w = gridW || Math.max(1, Math.round(img.width / this.slotSize));
-    h = gridH || Math.max(1, Math.round(img.height / this.slotSize));
-    console.log(`[InventoryMenu] 🧩 ${id} size detected: ${w}x${h}`);
-    const item = this.items.find(it => it.id === id);
-    if (item) { item.gridW = w; item.gridH = h; }
-  };
-
-  // temporarily mark 1x1, will update later onload
-  this.items.push({
-    id, name, iconPath, iconImage: img, desc, count,
-    gridW: w, gridH: h,
-    slotX: 0, slotY: 0, // placement resolved below
-  });
-}
   toggle() {
     this.visible = !this.visible;
     this.fade = 0;
@@ -104,10 +96,25 @@ addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
         this.hoverIndex = i;
         requestPointer();
         if (mouseWasPressed(0)) {
-          this.selectedIndex = i;
-          if (this.onUse) this.onUse(it);
+          this.draggingItem = it;
+          this.dragOffset.x = mx - gx;
+          this.dragOffset.y = my - gy;
         }
       }
+    }
+
+    if (this.draggingItem && !mouseIsDown(0)) {
+      const it = this.draggingItem;
+      const gridLeft = boxX + this.outerMargin;
+      const gridTop = boxY + 40 * uiScale + this.outerMargin;
+      const col = Math.floor((mx - gridLeft) / this.slotSize);
+      const row = Math.floor((my - gridTop) / this.slotSize);
+      if (row >= 0 && col >= 0 && col + it.gridW <= this.columns && row + it.gridH <= this.rows) {
+        it.slotX = col;
+        it.slotY = row;
+        console.log(`[InventoryMenu] 📦 Moved ${it.id} to ${col},${row}`);
+      }
+      this.draggingItem = null;
     }
   }
 
@@ -126,14 +133,12 @@ addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
     if (!this.visible || this.fade <= 0) return;
     const { uiScale, canvasW, canvasH, panelW, panelH, boxX, boxY } = this._layout();
 
-    // background overlay
     overlayContext.save();
     overlayContext.globalAlpha = this.fade * 0.8;
     overlayContext.fillStyle = 'rgba(0,0,0,0.85)';
     overlayContext.fillRect(0, 0, canvasW, canvasH);
     overlayContext.restore();
 
-    // main panel
     overlayContext.save();
     overlayContext.globalAlpha = this.fade;
     overlayContext.fillStyle = TextTheme.boxColor.toString();
@@ -151,7 +156,6 @@ addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
     const gridTop = boxY + 40 * uiScale + this.outerMargin;
     const gridLeft = boxX + this.outerMargin;
 
-    // 🔹 Connected slot grid (no margin gaps)
     overlayContext.strokeStyle = 'rgba(255,255,255,0.2)';
     overlayContext.lineWidth = 1;
     for (let r = 0; r <= this.rows; r++) {
@@ -169,9 +173,9 @@ addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
       overlayContext.stroke();
     }
 
-    // 🔹 Draw items (multi-slot)
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];
+      if (it === this.draggingItem) continue;
       const gx = gridLeft + it.slotX * this.slotSize;
       const gy = gridTop + it.slotY * this.slotSize;
       const gw = it.gridW * this.slotSize;
@@ -196,24 +200,52 @@ addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
       }
     }
 
-    // description
-    const sel = this.items[this.selectedIndex];
-    if (sel) {
-      overlayContext.font = `${18 * uiScale}px ${this.fontFamily}`;
-      overlayContext.textAlign = 'center';
-      overlayContext.textBaseline = 'top';
-      overlayContext.fillStyle = '#fff';
-      overlayContext.fillText(sel.name, boxX + panelW / 2, boxY + panelH - 80 * uiScale);
-
-      overlayContext.font = `${15 * uiScale}px ${this.fontFamily}`;
-      overlayContext.fillStyle = 'rgba(255,255,255,0.8)';
-      const wrapped = this._wrapText(sel.desc || '', panelW * 0.8);
-      let y = boxY + panelH - 55 * uiScale;
-      for (const line of wrapped) {
-        overlayContext.fillText(line, boxX + panelW / 2, y);
-        y += 18 * uiScale;
-      }
+    if (this.draggingItem) {
+      const it = this.draggingItem;
+      const img = it.iconImage;
+      const gw = it.gridW * this.slotSize;
+      const gh = it.gridH * this.slotSize;
+      const gx = mousePosScreen.x * uiScale - this.dragOffset.x;
+      const gy = mousePosScreen.y * uiScale - this.dragOffset.y;
+      overlayContext.globalAlpha = 0.8;
+      overlayContext.fillStyle = 'rgba(120,255,120,0.1)';
+      overlayContext.fillRect(gx, gy, gw, gh);
+      if (img && img.complete)
+        overlayContext.drawImage(img, gx + 4, gy + 4, gw - 8, gh - 8);
+      overlayContext.globalAlpha = 1;
     }
+
+    if (this.hoverIndex >= 0) {
+  const it = this.items[this.hoverIndex];
+  const mx = mousePosScreen.x * uiScale;
+  const my = mousePosScreen.y * uiScale;
+  const tooltipW = 280 * uiScale;
+  const tooltipH = 110 * uiScale;
+  const tx = Math.min(mx + 20, canvasW - tooltipW - 10);
+  const ty = Math.min(my + 20, canvasH - tooltipH - 10);
+
+  overlayContext.fillStyle = 'rgba(0,0,0,0.88)';
+  overlayContext.fillRect(tx, ty, tooltipW, tooltipH);
+  overlayContext.strokeStyle = 'rgba(255,255,255,0.25)';
+  overlayContext.strokeRect(tx, ty, tooltipW, tooltipH);
+
+  // 🏷️ Larger item name
+  overlayContext.font = `${19 * uiScale}px ${this.fontFamily}`;
+  overlayContext.fillStyle = '#fff';
+  overlayContext.textAlign = 'left';
+  overlayContext.textBaseline = 'top';
+  overlayContext.fillText(it.name, tx + 12, ty + 10);
+
+  // 📝 Larger description text
+  overlayContext.font = `${25.5 * uiScale}px ${this.fontFamily}`;
+  overlayContext.fillStyle = 'rgba(255,255,255,0.85)';
+  const wrapped = this._wrapText(it.desc || '', tooltipW - 24);
+  let yy = ty + 34;
+  for (const line of wrapped) {
+    overlayContext.fillText(line, tx + 12, yy);
+    yy += 29 * uiScale;
+  }
+}
     overlayContext.restore();
   }
 

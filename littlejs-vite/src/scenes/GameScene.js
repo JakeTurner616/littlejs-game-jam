@@ -56,13 +56,13 @@ export class GameScene {
     // 🔹 Create ItemSystem once (safe closure to current inventory)
     this.items = new ItemSystem(null, 128, (item) => {
       console.log(`[ItemSystem] Pickup callback for ${item.itemId}`);
-      this.dialog.setMode('monologue');
-      this.dialog.setText(`You picked up: ${item.itemId}`);
-      this.dialog.visible = true;
 
       // Add to inventory
       if (item.itemId === 'rusty_key') {
         this.inventory.addItem('rusty_key', 'RUSTY KEY', '/assets/items/rusty_key.png', 'A corroded iron key.', 1, 1, 2);
+              this.dialog.setMode('monologue');
+      this.dialog.setText(`You picked up a corroded iron key.`);
+      this.dialog.visible = true;
       } else {
         this.inventory.addItem(
           item.itemId,
@@ -72,11 +72,7 @@ export class GameScene {
         );
       }
 
-      // Auto-dismiss monologue
-      setTimeout(() => {
-        if (this.dialog.visible && this.dialog.mode === 'monologue')
-          this.dialog.visible = false;
-      }, 800);
+
     });
   }
 
