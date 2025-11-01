@@ -1,4 +1,4 @@
-// src/ui/InventoryMenu.js — 🎒 Cinematic inventory with connected slot grid mesh
+// src/ui/InventoryMenu.js — 🎒 Cinematic inventory with connected slot grid mesh + safe LittleJS image loading
 'use strict';
 import {
   overlayContext,
@@ -13,7 +13,7 @@ import { requestPointer } from './CursorManager.js';
 export class InventoryMenu {
   constructor() {
     this.visible = false;
-    this.items = []; // {id, name, icon, count, desc}
+    this.items = []; // {id, name, iconPath, iconImage, count, desc}
     this.selectedIndex = 0;
     this.columns = 4;
     this.rows = 3;
@@ -23,58 +23,80 @@ export class InventoryMenu {
     this.hoverIndex = -1;
     this.onUse = null;
     this.fontFamily = TextTheme.fontFamily;
+    this._iconCache = new Map(); // 🔹 cache loaded Image() objects
   }
 
-  addItem(id, name, icon, desc, count = 1) {
+  _ensureImage(iconPath) {
+    if (!iconPath) return null;
+    if (this._iconCache.has(iconPath)) return this._iconCache.get(iconPath);
+    const img = new Image();
+    img.src = iconPath;
+    img.onload = () => console.log(`[InventoryMenu] ✅ Loaded icon: ${iconPath}`);
+    img.onerror = e => console.warn(`[InventoryMenu] ⚠️ Failed to load icon: ${iconPath}`, e);
+    this._iconCache.set(iconPath, img);
+    return img;
+  }
+
+  addItem(id, name, iconPath, desc, count = 1) {
     const existing = this.items.find(i => i.id === id);
-    if (existing) existing.count += count;
-    else this.items.push({ id, name, icon, desc, count });
+    if (existing) {
+      existing.count += count;
+      return;
+    }
+    const iconImage = this._ensureImage(iconPath);
+    this.items.push({ id, name, iconPath, iconImage, desc, count });
   }
 
   toggle() {
     this.visible = !this.visible;
-    if (!this.visible) this.fade = 0;
+    this.fade = 0; // ✅ always reset fade
+    console.log(`[InventoryMenu] visibility = ${this.visible}`);
   }
 
   update(dt) {
-    if (!this.visible) return;
-    this.fade = Math.min(this.fade + dt * 3, 1);
+  // ✅ Smooth fade in/out without resetting each frame
+  const target = this.visible ? 1 : 0;
+  this.fade += (target - this.fade) * dt * 8;
+  this.fade = Math.max(0, Math.min(1, this.fade));
 
-    const total = this.items.length;
-    if (!total) return;
+  const total = this.items.length;
+  if (!total) return;
 
-    if (keyWasPressed('ArrowRight')) this.selectedIndex = (this.selectedIndex + 1) % total;
-    if (keyWasPressed('ArrowLeft')) this.selectedIndex = (this.selectedIndex - 1 + total) % total;
-    if (keyWasPressed('ArrowDown')) this.selectedIndex = (this.selectedIndex + this.columns) % total;
-    if (keyWasPressed('ArrowUp')) this.selectedIndex = (this.selectedIndex - this.columns + total) % total;
+  // 🔹 Navigation keys
+  if (keyWasPressed('ArrowRight')) this.selectedIndex = (this.selectedIndex + 1) % total;
+  if (keyWasPressed('ArrowLeft')) this.selectedIndex = (this.selectedIndex - 1 + total) % total;
+  if (keyWasPressed('ArrowDown')) this.selectedIndex = (this.selectedIndex + this.columns) % total;
+  if (keyWasPressed('ArrowUp')) this.selectedIndex = (this.selectedIndex - this.columns + total) % total;
 
-    if (keyWasPressed('Escape') || keyWasPressed('KeyI')) this.visible = false;
-    if (keyWasPressed('Enter') && this.items[this.selectedIndex] && this.onUse)
-      this.onUse(this.items[this.selectedIndex]);
 
-    const { boxX, boxY, panelW, uiScale } = this._layout();
-    const mx = mousePosScreen.x * uiScale;
-    const my = mousePosScreen.y * uiScale;
-    this.hoverIndex = -1;
+  // 🔹 Use selected item
+  if (keyWasPressed('Enter') && this.items[this.selectedIndex] && this.onUse)
+    this.onUse(this.items[this.selectedIndex]);
 
-    for (let i = 0; i < total; i++) {
-      const col = i % this.columns;
-      const row = Math.floor(i / this.columns);
-      const x = boxX + this.margin + col * (this.slotSize + this.margin);
-      const y = boxY + 40 * uiScale + this.margin + row * (this.slotSize + this.margin);
-      if (mx >= x && mx <= x + this.slotSize && my >= y && my <= y + this.slotSize) {
-        this.hoverIndex = i;
-        requestPointer();
-        if (mouseWasPressed(0)) {
-          this.selectedIndex = i;
-          if (this.onUse) this.onUse(this.items[i]);
-        }
+  // 🔹 Mouse hover & click detection
+  const { boxX, boxY, panelW, uiScale } = this._layout();
+  const mx = mousePosScreen.x * uiScale;
+  const my = mousePosScreen.y * uiScale;
+  this.hoverIndex = -1;
+
+  for (let i = 0; i < total; i++) {
+    const col = i % this.columns;
+    const row = Math.floor(i / this.columns);
+    const x = boxX + this.margin + col * (this.slotSize + this.margin);
+    const y = boxY + 40 * uiScale + this.margin + row * (this.slotSize + this.margin);
+
+    if (mx >= x && mx <= x + this.slotSize && my >= y && my <= y + this.slotSize) {
+      this.hoverIndex = i;
+      requestPointer();
+      if (mouseWasPressed(0)) {
+        this.selectedIndex = i;
+        if (this.onUse) this.onUse(this.items[i]);
       }
     }
   }
-
+}
   _layout() {
-    const uiScale = window.devicePixelRatio || 1;
+    const uiScale = window.devicePixelRatio || 1; 
     const canvasW = mainCanvasSize.x * uiScale;
     const canvasH = mainCanvasSize.y * uiScale;
     const panelW = (this.slotSize + this.margin) * this.columns + this.margin * 2;
@@ -86,17 +108,14 @@ export class InventoryMenu {
 
   draw() {
     if (!this.visible || this.fade <= 0) return;
-
     const { uiScale, canvasW, canvasH, panelW, panelH, boxX, boxY } = this._layout();
 
-    // cinematic dim overlay
     overlayContext.save();
     overlayContext.globalAlpha = this.fade * 0.8;
     overlayContext.fillStyle = 'rgba(0, 0, 0, 0.85)';
     overlayContext.fillRect(0, 0, canvasW, canvasH);
     overlayContext.restore();
 
-    // inventory panel
     overlayContext.save();
     overlayContext.globalAlpha = this.fade;
     overlayContext.fillStyle = TextTheme.boxColor.toString();
@@ -105,18 +124,14 @@ export class InventoryMenu {
     overlayContext.lineWidth = 3 * uiScale;
     overlayContext.strokeRect(boxX - 2, boxY - 2, panelW + 4, panelH + 4);
 
-    // header
     overlayContext.font = `${22 * uiScale}px ${this.fontFamily}`;
     overlayContext.textAlign = 'center';
     overlayContext.textBaseline = 'top';
     overlayContext.fillStyle = '#fff';
     overlayContext.fillText('INVENTORY', boxX + panelW / 2, boxY + 10 * uiScale);
 
-    // draw item slots
     const gridTop = boxY + 40 * uiScale + this.margin;
     const gridLeft = boxX + this.margin;
-    const totalW = this.columns * (this.slotSize + this.margin) - this.margin;
-    const totalH = this.rows * (this.slotSize + this.margin) - this.margin;
 
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.columns; c++) {
@@ -138,9 +153,10 @@ export class InventoryMenu {
         overlayContext.strokeRect(x, y, this.slotSize, this.slotSize);
 
         if (item) {
-          if (item.icon)
-            overlayContext.drawImage(item.icon, x + 8, y + 8, this.slotSize - 16, this.slotSize - 16);
-          else {
+          const img = item.iconImage;
+          if (img && img.complete && img.naturalWidth > 0) {
+            overlayContext.drawImage(img, x + 8, y + 8, this.slotSize - 16, this.slotSize - 16);
+          } else {
             overlayContext.fillStyle = 'rgba(255,255,255,0.1)';
             overlayContext.fillRect(x + 10, y + 10, this.slotSize - 20, this.slotSize - 20);
           }
@@ -156,28 +172,6 @@ export class InventoryMenu {
       }
     }
 
-    // 🔹 NEW: draw connecting grid lines between slots
-    overlayContext.strokeStyle = 'rgba(255,255,255,0.07)';
-    overlayContext.lineWidth = 1 * uiScale;
-    overlayContext.beginPath();
-
-    // vertical lines
-    for (let c = 1; c < this.columns; c++) {
-      const gx = gridLeft + c * (this.slotSize + this.margin) - this.margin / 2;
-      overlayContext.moveTo(gx, gridTop);
-      overlayContext.lineTo(gx, gridTop + totalH - this.margin / 2);
-    }
-
-    // horizontal lines
-    for (let r = 1; r < this.rows; r++) {
-      const gy = gridTop + r * (this.slotSize + this.margin) - this.margin / 2;
-      overlayContext.moveTo(gridLeft, gy);
-      overlayContext.lineTo(gridLeft + totalW - this.margin / 2, gy);
-    }
-
-    overlayContext.stroke();
-
-    // selected item info
     const sel = this.items[this.selectedIndex];
     if (sel) {
       overlayContext.font = `${18 * uiScale}px ${this.fontFamily}`;
@@ -195,7 +189,6 @@ export class InventoryMenu {
         y += 18 * uiScale;
       }
     }
-
     overlayContext.restore();
   }
 

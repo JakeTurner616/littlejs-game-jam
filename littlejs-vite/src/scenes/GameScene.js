@@ -1,4 +1,4 @@
-// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration + timed jump scare sync + Resident Evil–style inventory UI
+// src/scenes/GameScene.js — 🌧️ Dynamic environment modes + item pickup + fog of war integration + Resident Evil–style inventory UI (post-render UI phase)
 'use strict';
 import {
   vec2, drawText, hsl, keyWasPressed
@@ -33,7 +33,7 @@ export class GameScene {
     this.player = null;
     this.objects = null;
     this.dialog = new DialogBox('monologue');
-    this.inventory = new InventoryMenu(); // 🎒 New inventory system
+    this.inventory = new InventoryMenu();
     this.lighting = new LightingSystem();
     this.fog = new FogSystem();
     this.fogOfWar = new FogOfWarSystem();
@@ -46,13 +46,48 @@ export class GameScene {
     this._lightTimer = 0;
     this._nextLightning = 0;
 
+    // 🎒 Use item callback
     this.inventory.onUse = (item) => {
       this.dialog.setMode('monologue');
       this.dialog.setText(`You used the ${item.name}.`);
       this.dialog.visible = true;
     };
+
+    // 🔹 Create ItemSystem once (safe closure to current inventory)
+    this.items = new ItemSystem(null, 128, (item) => {
+      console.log(`[ItemSystem] Pickup callback for ${item.itemId}`);
+      this.dialog.setMode('monologue');
+      this.dialog.setText(`You picked up: ${item.itemId}`);
+      this.dialog.visible = true;
+
+      // Add to inventory
+      if (item.itemId === 'rusty_key') {
+        this.inventory.addItem(
+          'rusty_key',
+          'RUSTY KEY',
+          '/assets/items/rusty_key.png',
+          'A corroded iron key. It feels rough to the touch.'
+        );
+      } else {
+        this.inventory.addItem(
+          item.itemId,
+          item.itemId.toUpperCase(),
+          `/assets/items/${item.itemId}.png`,
+          `A mysterious ${item.itemId}.`
+        );
+      }
+
+      // Auto-dismiss monologue
+      setTimeout(() => {
+        if (this.dialog.visible && this.dialog.mode === 'monologue')
+          this.dialog.visible = false;
+      }, 800);
+    });
   }
 
+  // ──────────────────────────────────────────────
+  // Map load
+  // ──────────────────────────────────────────────
   async loadNewMap(mapPath, spawnC, spawnR) {
     const PPU = 128;
     const newMap = await loadTiledMap(mapPath, PPU);
@@ -67,9 +102,7 @@ export class GameScene {
     this.player.direction = 4;
     this.player.path = [];
 
-    // ──────────────────────────────────────────────
-    // Object Systems
-    // ──────────────────────────────────────────────
+    // Objects
     if (this.objects) {
       this.objects.map = newMap;
       this.objects.objects.length = 0;
@@ -80,9 +113,7 @@ export class GameScene {
       await this.objects.load();
     }
 
-    // ──────────────────────────────────────────────
-    // Object Triggers + Jump Scare Logic (timed)
-    // ──────────────────────────────────────────────
+    // Triggers
     if (this.objectTriggers) {
       this.objectTriggers.map = newMap;
       this.objectTriggers.triggers.length = 0;
@@ -91,34 +122,21 @@ export class GameScene {
     } else {
       this.objectTriggers = new ObjectTriggerEventSystem(newMap, PPU, (trigger) => {
         console.log('[ObjectTrigger] Event fired:', trigger?.eventId);
-
         if (trigger?.eventId === 'witch_spawn') {
-          console.log('[ObjectTrigger] ✅ witch_spawn detected');
           this.witchManager.spawn(trigger);
           setTimeout(() => {
             audioManager.playSound('jump_scare', null, 0.9);
-            console.log('[GameScene] 🎧 Jump scare sound triggered');
           }, 20);
-        } else if (trigger?.eventId && EventRegistry[trigger.eventId]) {
+        } else if (trigger?.eventId && EventRegistry[trigger.eventId])
           EventRegistry[trigger.eventId].execute(this, this.player);
-        }
       });
       this.objectTriggers.loadFromMap();
     }
 
-    // ──────────────────────────────────────────────
-    // Polygon Events
-    // ──────────────────────────────────────────────
+    // Polygon events
     if (this.events) {
       this.events.map = newMap;
       this.events.enabled = true;
-      this.events.hovered = null;
-      this.events.lastHovered = null;
-      this.events.fadeTimer = 0;
-      this.events.activeTintTimer = 0;
-
-      if (!newMap.eventPolygons?.length)
-        console.warn('[PolygonEventSystem] newMap has no eventPolygons');
     } else {
       this.events = new PolygonEventSystem(newMap, (poly) => {
         if (poly?.eventId && EventRegistry[poly.eventId]) {
@@ -129,38 +147,17 @@ export class GameScene {
     }
     this.events.setTriggerSystem(this.objectTriggers);
 
-    // ──────────────────────────────────────────────
-    // Item System
-    // ──────────────────────────────────────────────
-    if (this.items) {
-      this.items.map = newMap;
-      this.items.items.length = 0;
-      this.items.enabled = true;
-      this.items.loadFromMap();
-    } else {
-      this.items = new ItemSystem(newMap, PPU, (item) => {
-        this.dialog.setMode('monologue');
-        this.dialog.setText(`You picked up: ${item.itemId}`);
-        this.dialog.visible = true;
+    // Items
+    this.items.map = newMap;
+    this.items.items.length = 0;
+    this.items.enabled = true;
+    this.items.loadFromMap();
 
-        // 🎒 Automatically add to inventory
-        this.inventory.addItem(item.itemId, item.itemId, null, `A mysterious ${item.itemId}.`);
-      });
-      this.items.loadFromMap();
-    }
-
-    // ──────────────────────────────────────────────
-    // Fog of War Setup
-    // ──────────────────────────────────────────────
-    if (!this.fogOfWar) {
-      this.fogOfWar = new FogOfWarSystem();
-    }
+    // Fog of war
     this.fogOfWar.loadFromMap(newMap);
     window.fogOfWar = this.fogOfWar;
 
-    // ──────────────────────────────────────────────
-    // Environment Modes
-    // ──────────────────────────────────────────────
+    // Environment
     if (mapPath.includes('inside')) {
       this.lighting.setRainMode('background');
       this.lighting.setLightningMode('background');
@@ -183,14 +180,13 @@ export class GameScene {
   }
 
   // ──────────────────────────────────────────────
-  // Lightning Scheduling
+  // Lightning
   // ──────────────────────────────────────────────
   _scheduleNextLightning() {
     const intervals = [4, 6, 8, 10, 12, 15];
     this._nextLightning = intervals[(Math.random() * intervals.length) | 0];
     this._lightTimer = 0;
   }
-
   _updateLightning(dt) {
     this._lightTimer += dt;
     if (this._lightTimer >= this._nextLightning) {
@@ -201,7 +197,7 @@ export class GameScene {
   }
 
   // ──────────────────────────────────────────────
-  // Scene Entry
+  // Scene entry
   // ──────────────────────────────────────────────
   async onEnter() {
     const PPU = 128;
@@ -224,14 +220,11 @@ export class GameScene {
     window.scene = this;
     window.debug = DebugStateManager;
     window.player = this.player;
-
-
-
     this.ready = true;
   }
 
   // ──────────────────────────────────────────────
-  // Update Loop
+  // Update
   // ──────────────────────────────────────────────
   isLoaded() { return this.ready && this.player?.ready && this.map; }
 
@@ -246,10 +239,10 @@ export class GameScene {
     }
     updatePaintSystem(dt);
 
-    // 🎒 Inventory toggle
-    if (keyWasPressed('KeyI'))
-      console.log('[InventoryMenu] Toggled inventory menu'),
+    if (keyWasPressed('KeyI')) {
+      console.log('[InventoryMenu] Toggled inventory menu');
       this.inventory.toggle();
+    }
 
     this.inventory.update(dt);
 
@@ -266,12 +259,11 @@ export class GameScene {
     this.dialog.update(dt);
     this.lighting.update(dt);
     this.fog.update(dt, this.player.pos);
-
     cursorApply();
   }
 
   // ──────────────────────────────────────────────
-  // Render Loop
+  // Render world layer
   // ──────────────────────────────────────────────
   render() {
     if (!this.isLoaded()) {
@@ -290,7 +282,6 @@ export class GameScene {
     renderMap(this.map, this.player.ppu, this.player.pos, this.player.pos, this.player.feetOffset);
     this.objects?.draw();
 
-    // 🕳️ Fog of war
     this.fogOfWar.render();
 
     const stack = [...this.witchManager.entitiesAbove, this.player];
@@ -306,8 +297,12 @@ export class GameScene {
       this.lighting.renderOverlay(cam);
 
     this.fog.render(this.player.pos, 'overlay');
+  }
 
-    // UI Layers
+  // ──────────────────────────────────────────────
+  // Render UI layer (post-phase)
+  // ──────────────────────────────────────────────
+  renderPost() {
     if (this.dialog.visible) this.dialog.draw();
     this.inventory.draw();
   }

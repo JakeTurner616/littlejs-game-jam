@@ -2076,12 +2076,12 @@
                         {
                          "name":"itemId",
                          "type":"string",
-                         "value":"outside_test"
+                         "value":"rusty_key"
                         }, 
                         {
                          "name":"name",
                          "type":"string",
-                         "value":"outside_test"
+                         "value":"bookcase"
                         }, 
                         {
                          "name":"requireWalkUp",
