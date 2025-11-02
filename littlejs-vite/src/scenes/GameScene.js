@@ -23,6 +23,7 @@ import { DebugStateManager } from '../debug/DebugStateManager.js';
 import { initPaintSystem, updatePaintSystem } from '../map/paintSystem.js';
 import { ItemSystem } from '../map/itemSystem.js';
 import { beginFrame as cursorBeginFrame, apply as cursorApply } from '../ui/CursorManager.js';
+import { fadeAudioSystem } from '../audio/FadeAudioSystem.js';
 
 setDebugMapEnabled(false);
 
@@ -70,13 +71,14 @@ if (item.itemId === 'music_box') {
     'MUSIC BOX',
     '/assets/items/musicbox.png',
     'A small music box.',
-    1, // count
-    2, // grid width (≈160px)
-    2  // grid height (≈160px)
+    1, 2, 2
   );
   this.dialog.setMode('monologue');
   this.dialog.setText('You picked up a small music box.');
   this.dialog.visible = true;
+
+  // 🎵 Fade out over 1s, wait 20s, fade back in over 1s
+  fadeAudioSystem.triggerFadeSfxSequence('music_box', 1, 20, 1);
 }
       
 
@@ -231,6 +233,8 @@ if (item.itemId === 'music_box') {
     if (!this.isLoaded()) return;
     const dt = 1 / 60;
     cursorBeginFrame();
+
+    fadeAudioSystem.update(dt);
 
     if (!this._paintInitialized && this.player?.ready) {
       updatePaintSystem(0);
