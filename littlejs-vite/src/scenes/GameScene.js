@@ -63,14 +63,22 @@ export class GameScene {
               this.dialog.setMode('monologue');
       this.dialog.setText(`You picked up a corroded iron key.`);
       this.dialog.visible = true;
-      } else {
-        this.inventory.addItem(
-          item.itemId,
-          item.itemId.toUpperCase(),
-          `/assets/items/${item.itemId}.png`,
-          `A mysterious ${item.itemId}.`
-        );
-      }
+      } 
+if (item.itemId === 'music_box') {
+  this.inventory.addItem(
+    'music_box',
+    'MUSIC BOX',
+    '/assets/items/musicbox.png',
+    'A small music box.',
+    1, // count
+    2, // grid width (≈160px)
+    2  // grid height (≈160px)
+  );
+  this.dialog.setMode('monologue');
+  this.dialog.setText('You picked up a small music box.');
+  this.dialog.visible = true;
+}
+      
 
 
     });

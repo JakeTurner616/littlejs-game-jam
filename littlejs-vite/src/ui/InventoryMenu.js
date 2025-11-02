@@ -1,4 +1,4 @@
-// src/ui/InventoryMenu.js — 🧩 Connected-grid Resident Evil–style inventory (drag, hover info)
+// src/ui/InventoryMenu.js — 🧩 Resident Evil–style inventory (centered drag, snapback, placement highlight)
 'use strict';
 import {
   overlayContext,
@@ -23,6 +23,7 @@ export class InventoryMenu {
     this.selectedIndex = 0;
     this.hoverIndex = -1;
     this.draggingItem = null;
+    this.dragOrigin = null;
     this.dragOffset = { x: 0, y: 0 };
     this.onUse = null;
     this.fontFamily = TextTheme.fontFamily;
@@ -38,6 +39,28 @@ export class InventoryMenu {
     return img;
   }
 
+  _isOccupied(x, y, w, h, ignoreItem = null) {
+    for (const it of this.items) {
+      if (it === ignoreItem) continue;
+      if (
+        x < it.slotX + it.gridW &&
+        x + w > it.slotX &&
+        y < it.slotY + it.gridH &&
+        y + h > it.slotY
+      ) return true;
+    }
+    return false;
+  }
+
+  _findFreeSlot(w, h) {
+    for (let y = 0; y <= this.rows - h; y++) {
+      for (let x = 0; x <= this.columns - w; x++) {
+        if (!this._isOccupied(x, y, w, h)) return { x, y };
+      }
+    }
+    return null;
+  }
+
   addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
     const existing = this.items.find(i => i.id === id);
     if (existing) {
@@ -45,25 +68,31 @@ export class InventoryMenu {
       return;
     }
     const img = this._ensureImage(iconPath);
-    let w = gridW || 1;
-    let h = gridH || 1;
+    let w = gridW || 1, h = gridH || 1;
+
     img.onload = () => {
       w = gridW || Math.max(1, Math.round(img.width / this.slotSize));
       h = gridH || Math.max(1, Math.round(img.height / this.slotSize));
-      console.log(`[InventoryMenu] 🧩 ${id} size detected: ${w}x${h}`);
       const item = this.items.find(it => it.id === id);
       if (item) { item.gridW = w; item.gridH = h; }
     };
+
+    const slot = this._findFreeSlot(w, h);
+    if (!slot) {
+      console.warn(`[InventoryMenu] ❌ No free slot for ${id}`);
+      return;
+    }
+
     this.items.push({
       id, name, iconPath, iconImage: img, desc, count,
-      gridW: w, gridH: h, slotX: 0, slotY: 0
+      gridW: w, gridH: h, slotX: slot.x, slotY: slot.y
     });
+    console.log(`[InventoryMenu] ✅ Placed ${id} at ${slot.x},${slot.y}`);
   }
 
   toggle() {
     this.visible = !this.visible;
     this.fade = 0;
-    console.log(`[InventoryMenu] visibility = ${this.visible}`);
   }
 
   update(dt) {
@@ -86,6 +115,7 @@ export class InventoryMenu {
     const my = mousePosScreen.y * uiScale;
     this.hoverIndex = -1;
 
+    // hover + drag start
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];
       const gx = boxX + this.outerMargin + it.slotX * this.slotSize;
@@ -97,24 +127,33 @@ export class InventoryMenu {
         requestPointer();
         if (mouseWasPressed(0)) {
           this.draggingItem = it;
+          this.dragOrigin = { x: it.slotX, y: it.slotY };
           this.dragOffset.x = mx - gx;
           this.dragOffset.y = my - gy;
         }
       }
     }
 
+    // release drag — validated placement
     if (this.draggingItem && !mouseIsDown(0)) {
       const it = this.draggingItem;
       const gridLeft = boxX + this.outerMargin;
       const gridTop = boxY + 40 * uiScale + this.outerMargin;
-      const col = Math.floor((mx - gridLeft) / this.slotSize);
-      const row = Math.floor((my - gridTop) / this.slotSize);
-      if (row >= 0 && col >= 0 && col + it.gridW <= this.columns && row + it.gridH <= this.rows) {
-        it.slotX = col;
-        it.slotY = row;
-        console.log(`[InventoryMenu] 📦 Moved ${it.id} to ${col},${row}`);
+      const col = Math.floor((mx - gridLeft - (it.gridW * this.slotSize) / 2) / this.slotSize);
+      const row = Math.floor((my - gridTop - (it.gridH * this.slotSize) / 2) / this.slotSize);
+      const clampedCol = Math.max(0, Math.min(this.columns - it.gridW, col));
+      const clampedRow = Math.max(0, Math.min(this.rows - it.gridH, row));
+
+      const validDrop = !this._isOccupied(clampedCol, clampedRow, it.gridW, it.gridH, it);
+      if (validDrop) {
+        it.slotX = clampedCol;
+        it.slotY = clampedRow;
+      } else {
+        it.slotX = this.dragOrigin.x;
+        it.slotY = this.dragOrigin.y;
       }
       this.draggingItem = null;
+      this.dragOrigin = null;
     }
   }
 
@@ -173,14 +212,14 @@ export class InventoryMenu {
       overlayContext.stroke();
     }
 
-    for (let i = 0; i < this.items.length; i++) {
-      const it = this.items[i];
+    // draw fixed items
+    for (const it of this.items) {
       if (it === this.draggingItem) continue;
       const gx = gridLeft + it.slotX * this.slotSize;
       const gy = gridTop + it.slotY * this.slotSize;
       const gw = it.gridW * this.slotSize;
       const gh = it.gridH * this.slotSize;
-      const selected = i === this.selectedIndex || i === this.hoverIndex;
+      const selected = this.items[this.selectedIndex] === it || this.items[this.hoverIndex] === it;
 
       overlayContext.fillStyle = selected ? 'rgba(120,255,120,0.15)' : 'rgba(255,255,255,0.05)';
       overlayContext.fillRect(gx, gy, gw, gh);
@@ -188,25 +227,38 @@ export class InventoryMenu {
       overlayContext.strokeRect(gx, gy, gw, gh);
 
       const img = it.iconImage;
-      if (img && img.complete && img.naturalWidth > 0)
+      if (img && img.complete)
         overlayContext.drawImage(img, gx + 4, gy + 4, gw - 8, gh - 8);
-
-      if (it.count > 1) {
-        overlayContext.fillStyle = '#fff';
-        overlayContext.font = `${14 * uiScale}px ${this.fontFamily}`;
-        overlayContext.textAlign = 'right';
-        overlayContext.textBaseline = 'bottom';
-        overlayContext.fillText(`x${it.count}`, gx + gw - 4, gy + gh - 4);
-      }
     }
 
+    // drag ghost and placement outline
     if (this.draggingItem) {
       const it = this.draggingItem;
       const img = it.iconImage;
       const gw = it.gridW * this.slotSize;
       const gh = it.gridH * this.slotSize;
-      const gx = mousePosScreen.x * uiScale - this.dragOffset.x;
-      const gy = mousePosScreen.y * uiScale - this.dragOffset.y;
+      const mx = mousePosScreen.x * uiScale;
+      const my = mousePosScreen.y * uiScale;
+      const gx = mx - (it.gridW * this.slotSize) / 2;
+      const gy = my - (it.gridH * this.slotSize) / 2;
+
+      // compute potential drop position
+      const gridLeft = boxX + this.outerMargin;
+      const gridTop = boxY + 40 * uiScale + this.outerMargin;
+      const col = Math.floor((mx - gridLeft - (it.gridW * this.slotSize) / 2) / this.slotSize);
+      const row = Math.floor((my - gridTop - (it.gridH * this.slotSize) / 2) / this.slotSize);
+      const clampedCol = Math.max(0, Math.min(this.columns - it.gridW, col));
+      const clampedRow = Math.max(0, Math.min(this.rows - it.gridH, row));
+      const valid = !this._isOccupied(clampedCol, clampedRow, it.gridW, it.gridH, it);
+
+      // highlight placement area
+      const px = gridLeft + clampedCol * this.slotSize;
+      const py = gridTop + clampedRow * this.slotSize;
+      overlayContext.strokeStyle = valid ? 'rgba(120,255,120,0.9)' : 'rgba(255,80,80,0.9)';
+      overlayContext.lineWidth = 3;
+      overlayContext.strokeRect(px, py, gw, gh);
+
+      // ghost image
       overlayContext.globalAlpha = 0.8;
       overlayContext.fillStyle = 'rgba(120,255,120,0.1)';
       overlayContext.fillRect(gx, gy, gw, gh);
@@ -215,37 +267,37 @@ export class InventoryMenu {
       overlayContext.globalAlpha = 1;
     }
 
+    // hover tooltip
     if (this.hoverIndex >= 0) {
-  const it = this.items[this.hoverIndex];
-  const mx = mousePosScreen.x * uiScale;
-  const my = mousePosScreen.y * uiScale;
-  const tooltipW = 280 * uiScale;
-  const tooltipH = 110 * uiScale;
-  const tx = Math.min(mx + 20, canvasW - tooltipW - 10);
-  const ty = Math.min(my + 20, canvasH - tooltipH - 10);
+      const it = this.items[this.hoverIndex];
+      const mx = mousePosScreen.x * uiScale;
+      const my = mousePosScreen.y * uiScale;
+      const tooltipW = 280 * uiScale;
+      const tooltipH = 110 * uiScale;
+      const tx = Math.min(mx + 20, canvasW - tooltipW - 10);
+      const ty = Math.min(my + 20, canvasH - tooltipH - 10);
 
-  overlayContext.fillStyle = 'rgba(0,0,0,0.88)';
-  overlayContext.fillRect(tx, ty, tooltipW, tooltipH);
-  overlayContext.strokeStyle = 'rgba(255,255,255,0.25)';
-  overlayContext.strokeRect(tx, ty, tooltipW, tooltipH);
+      overlayContext.fillStyle = 'rgba(0,0,0,0.88)';
+      overlayContext.fillRect(tx, ty, tooltipW, tooltipH);
+      overlayContext.strokeStyle = 'rgba(255,255,255,0.25)';
+      overlayContext.strokeRect(tx, ty, tooltipW, tooltipH);
 
-  // 🏷️ Larger item name
-  overlayContext.font = `${19 * uiScale}px ${this.fontFamily}`;
-  overlayContext.fillStyle = '#fff';
-  overlayContext.textAlign = 'left';
-  overlayContext.textBaseline = 'top';
-  overlayContext.fillText(it.name, tx + 12, ty + 10);
+      overlayContext.font = `${19 * uiScale}px ${this.fontFamily}`;
+      overlayContext.fillStyle = '#fff';
+      overlayContext.textAlign = 'left';
+      overlayContext.textBaseline = 'top';
+      overlayContext.fillText(it.name, tx + 12, ty + 10);
 
-  // 📝 Larger description text
-  overlayContext.font = `${25.5 * uiScale}px ${this.fontFamily}`;
-  overlayContext.fillStyle = 'rgba(255,255,255,0.85)';
-  const wrapped = this._wrapText(it.desc || '', tooltipW - 24);
-  let yy = ty + 34;
-  for (const line of wrapped) {
-    overlayContext.fillText(line, tx + 12, yy);
-    yy += 29 * uiScale;
-  }
-}
+      overlayContext.font = `${25.5 * uiScale}px ${this.fontFamily}`;
+      overlayContext.fillStyle = 'rgba(255,255,255,0.85)';
+      const wrapped = this._wrapText(it.desc || '', tooltipW - 24);
+      let yy = ty + 34;
+      for (const line of wrapped) {
+        overlayContext.fillText(line, tx + 12, yy);
+        yy += 29 * uiScale;
+      }
+    }
+
     overlayContext.restore();
   }
 
