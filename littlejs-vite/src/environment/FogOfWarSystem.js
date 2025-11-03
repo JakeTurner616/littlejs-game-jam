@@ -1,4 +1,4 @@
-// src/environment/FogOfWarSystem.js — persistent reveal memory
+// src/environment/FogOfWarSystem.js — persistent reveal memory + console toggle
 'use strict';
 import {
   vec2, Color, overlayContext, mainCanvas, cameraPos, cameraScale
@@ -22,7 +22,6 @@ export class FogOfWarSystem {
       return;
     }
 
-    // use map name or file path as a key
     this.currentMapKey = map.mapData?.name || map.mapData?.tiledversion || 'unknown_map';
 
     const { mapData, TILE_W, TILE_H } = map;
@@ -84,7 +83,10 @@ export class FogOfWarSystem {
   }
 
   render() {
-    if (!this.enabled || !this.areas.length) return;
+    // 🔸 check both local flag and global override
+    if (!this.enabled || window.fogOfWarEnabled === false || !this.areas.length)
+      return;
+
     const ctx = overlayContext, scale = cameraScale, cam = cameraPos;
     const worldToScreen = p => vec2(
       (p.x - cam.x) * scale + mainCanvas.width / 2,
@@ -108,3 +110,26 @@ export class FogOfWarSystem {
     ctx.restore();
   }
 }
+
+/*───────────────────────────────────────────────
+  🌫️ Console helpers
+───────────────────────────────────────────────*/
+
+// global flag (default true)
+window.fogOfWarEnabled = true;
+
+/**
+ * Toggle fog polygons globally for testing.
+ * Example usage from console:
+ *   toggleFogOfWar()        → toggles on/off
+ *   toggleFogOfWar(false)   → force off
+ *   toggleFogOfWar(true)    → force on
+ */
+window.toggleFogOfWar = function (state) {
+  if (typeof state === 'boolean')
+    window.fogOfWarEnabled = state;
+  else
+    window.fogOfWarEnabled = !window.fogOfWarEnabled;
+
+  console.log(`[FogOfWarSystem] Fog rendering ${window.fogOfWarEnabled ? 'ENABLED' : 'DISABLED'}`);
+};

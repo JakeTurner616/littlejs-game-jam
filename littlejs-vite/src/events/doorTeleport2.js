@@ -1,15 +1,7 @@
 // src/events/doorTeleport2.js — ✅ Enhanced: environment background sync + fog/fogOfWar visibility fix
 'use strict';
-import { keyWasPressed } from 'littlejsengine';
+import { keyWasPressed, vec2 } from 'littlejsengine';
 import { audioManager } from '../audio/AudioManager.js';
-
-/*
-  NOTE 🧭
-  The fog, fog-of-war, and lighting adjustments here are primarily for
-  **debug jump safety** — ensuring that skipping door_teleport_1 still
-  produces a visually consistent indoor environment.
-  During normal gameplay, door_teleport_1 already handles this transition.
-*/
 
 export const event = {
   id: 'door_teleport_2',
@@ -22,21 +14,17 @@ export const event = {
     // 🩹 Environment Sync (for debug direct jumps)
     // ──────────────────────────────────────────────
     try {
-      // 🌀 Fog fade-out if still active
       if (scene.fog && scene.fog.enabled && !scene.fog.fadingOut) {
         scene.fog.fadeOut();
         console.log('[doorTeleport2] 🧭 Debug: Forced fog fade-out');
       }
 
-      // 🌫️ Fog-of-war visibility correction
       if (scene.fogOfWar) {
-        // ensure polygons are visible again
         for (const a of scene.fogOfWar.areas || []) a.hidden = false;
         scene.fogOfWar.enabled = true;
         console.log('[doorTeleport2] 🧭 Debug: Restored fog-of-war polygons visibility');
       }
 
-      // 🌧️ Ensure lighting is in background mode
       if (scene.lighting) {
         const l = scene.lighting;
         if (l.rainRenderMode !== 'background') {
@@ -57,7 +45,7 @@ export const event = {
     }
 
     // ──────────────────────────────────────────────
-    // Normal event flow
+    // Wait for any visible dialogue to complete
     // ──────────────────────────────────────────────
     await new Promise(resolve => {
       const check = () => {
@@ -117,8 +105,13 @@ export const event = {
           }
 
           // 🗺️ Switch to new map (indoor)
-          await scene.loadNewMap('/assets/map/indoor-room.tmj', 6.25, 8.75);
+          await scene.loadNewMap('/assets/map/indoor-room.tmj', 5.90, 8.00);
           console.log('[doorTeleport2] Loaded new map: indoor-room.tmj');
+
+          player.direction = 6; // S
+          player.state = 'idle';
+          player.path = [];
+          console.log('[doorTeleport2] Spawned player at (5.90, 8.00), Dir=6 (S)');
 
           // 🌩️ Subtle ambience for indoor tone
           if (scene.lighting) {

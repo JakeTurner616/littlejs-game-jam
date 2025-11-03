@@ -2,8 +2,10 @@
 'use strict';
 import {
   keyIsDown, mouseWasPressed, screenToWorld, mousePosScreen,
-  vec2, clamp, timeDelta, ParticleEmitter, Color, PI
+  vec2, clamp, timeDelta, ParticleEmitter, Color,
+  cameraPos, cameraScale, mainCanvas
 } from 'littlejsengine';
+import { worldToIso } from '../map/isoMath.js';
 
 export function handlePlayerMovement(p) {
   const move = vec2(0, 0);
@@ -157,3 +159,53 @@ function angleToDir(a) {
   const off = Math.PI / 8;
   return (Math.floor(((a + off) % (2 * Math.PI)) / (Math.PI / 4)) + 5) % 8;
 }
+
+/*───────────────────────────────────────────────
+  🔍 Debug helper: prints player position + direction
+───────────────────────────────────────────────*/
+/*───────────────────────────────────────────────
+  🔍 Debug helper: prints player position + direction
+───────────────────────────────────────────────*/
+/*───────────────────────────────────────────────
+  🔍 Debug helper: prints player position + direction
+───────────────────────────────────────────────*/
+export function printPlayerPosition() {
+  const scene = window.scene;
+  const p = scene?.player;
+  const map = scene?.map;
+  if (!p || !map) {
+    console.warn('[printPlayerPosition] Player or map not ready');
+    return;
+  }
+
+  const feet = p.pos.add(p.feetOffset);
+
+  // ✅ Screen position for debugging
+  const screen = vec2(
+    (feet.x - cameraPos.x) * cameraScale + mainCanvas.width / 2,
+    (feet.y - cameraPos.y) * -cameraScale + mainCanvas.height / 2
+  );
+
+  // ✅ Convert world → isometric tile coordinates (adjusted to match loadNewMap)
+  const cr = worldToIso(
+    p.pos.x,               // use base position, not feet
+    p.pos.y,
+    map.mapData.width,
+    map.mapData.height,
+    map.TILE_W,
+    map.TILE_H
+  );
+
+  console.log(`[Player] Dir=${p.direction} (${dirToText(p.direction)})`);
+  console.log(`  World: (${feet.x.toFixed(2)}, ${feet.y.toFixed(2)})`);
+  console.log(`  Screen: (${screen.x.toFixed(1)}, ${screen.y.toFixed(1)})`);
+  console.log(`  Tile CR (for loadNewMap): (${cr.x.toFixed(2)}, ${cr.y.toFixed(2)})`);
+  console.log(`  👉 Usage: await scene.loadNewMap('yourmap.tmj', ${cr.x.toFixed(2)}, ${cr.y.toFixed(2)});`);
+}
+
+function dirToText(d) {
+  const dirs = ['E','NE','N','NW','W','SW','S','SE'];
+  return dirs[d % 8] || '?';
+}
+
+window.printPlayerPosition = printPlayerPosition;
