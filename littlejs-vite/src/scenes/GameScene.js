@@ -24,6 +24,7 @@ import { initPaintSystem, updatePaintSystem } from '../map/paintSystem.js';
 import { ItemSystem } from '../map/itemSystem.js';
 import { beginFrame as cursorBeginFrame, apply as cursorApply } from '../ui/CursorManager.js';
 import { fadeAudioSystem } from '../audio/FadeAudioSystem.js';
+import { SkillCheckSystem } from '../rpg/SkillCheckSystem.js'; // ✅ added import
 
 setDebugMapEnabled(false);
 
@@ -35,6 +36,7 @@ export class GameScene {
     this.objects = null;
     this.dialog = new DialogBox('monologue');
     this.inventory = new InventoryMenu();
+    this.skillChecks = new SkillCheckSystem(this.inventory, this); // ✅ new RPG system
     this.lighting = new LightingSystem();
     this.fog = new FogSystem();
     this.fogOfWar = new FogOfWarSystem();
@@ -61,31 +63,27 @@ export class GameScene {
       // Add to inventory
       if (item.itemId === 'rusty_key') {
         this.inventory.addItem('rusty_key', 'RUSTY KEY', '/assets/items/rusty_key.png', 'A corroded iron key.', 1, 1, 2);
-              this.dialog.setMode('monologue');
-      this.dialog.setText(`You picked up a corroded iron key.`);
-      this.dialog.visible = true;
+        this.dialog.setMode('monologue');
+        this.dialog.setText(`You picked up a corroded iron key.`);
+        this.dialog.visible = true;
       } 
-if (item.itemId === 'music_box') {
-  this.inventory.addItem(
-    'music_box',
-    'MUSIC BOX',
-    '/assets/items/musicbox.png',
-    'A small music box.',
-    1, 2, 2
-  );
-  this.dialog.setMode('monologue');
-  this.dialog.setText('You picked up a small music box.');
-  this.dialog.visible = true;
-
-  // 🎵 Fade out over 1s, wait 20s, fade back in over 1s
-  fadeAudioSystem.triggerFadeSfxSequence('music_box', 1, 20, 1);
-}
-      
-
-
+      if (item.itemId === 'music_box') {
+        this.inventory.addItem(
+          'music_box',
+          'MUSIC BOX',
+          '/assets/items/musicbox.png',
+          'A small music box.',
+          1, 2, 2
+        );
+        this.dialog.setMode('monologue');
+        this.dialog.setText('You picked up a small music box.');
+        this.dialog.visible = true;
+        fadeAudioSystem.triggerFadeSfxSequence('music_box', 1, 20, 1);
+      }
     });
   }
 
+  // (rest of the file unchanged)
   // ──────────────────────────────────────────────
   // Map load
   // ──────────────────────────────────────────────
