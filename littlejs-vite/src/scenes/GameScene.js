@@ -303,8 +303,14 @@ export class GameScene {
   // ──────────────────────────────────────────────
   // Render UI layer (post-phase)
   // ──────────────────────────────────────────────
-  renderPost() {
+renderPost() {
     if (this.dialog.visible) this.dialog.draw();
     this.inventory.draw();
+
+    // ✅ Draw skill-check toasts on top of everything
+    if (this.skillChecks) {
+      this.skillChecks.update(1/60);
+      this.skillChecks.draw();
+    }
   }
 }

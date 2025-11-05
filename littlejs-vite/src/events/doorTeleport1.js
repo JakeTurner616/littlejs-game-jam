@@ -1,4 +1,4 @@
-// src/events/doorTeleport1.js — 🕯️ Narrative door with partial-open logic, disabled options & scroll
+// src/events/doorTeleport1.js — 🕯️ Narrative door + skill-check HUD feedback (toasts integrated)
 'use strict';
 import { keyWasPressed } from 'littlejsengine';
 import { audioManager } from '../audio/AudioManager.js';
@@ -10,6 +10,9 @@ export const event = {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
 
+    // ─────────────────────────────────────────────
+    // Wait for any previous dialog to close
+    // ─────────────────────────────────────────────
     await new Promise((resolve) => {
       const check = () => {
         if (!scene.dialog.visible) return resolve();
@@ -52,6 +55,9 @@ export const event = {
         loop();
       });
 
+    // ─────────────────────────────────────────────
+    // Transition helper: open the door
+    // ─────────────────────────────────────────────
     const openDoorSequence = async (finalText) => {
       audioManager.playSound('door_open', null, 1);
       scene.fog?.fadeOut();
@@ -70,6 +76,9 @@ export const event = {
       player.frozen = false;
     };
 
+    // ─────────────────────────────────────────────
+    // Menu reopen helper
+    // ─────────────────────────────────────────────
     const reopenMenu = async () => {
       const opts = baseOptions.map(o => ({
         ...o,
@@ -79,8 +88,11 @@ export const event = {
       scene.dialog.setText(intro, opts, handler);
     };
 
+    // ─────────────────────────────────────────────
+    // Handler for each dialogue option
+    // ─────────────────────────────────────────────
     const handler = async (value) => {
-      if (used.has(value)) return; // prevent repeat click
+      if (used.has(value)) return;
       used.add(value);
       scene.dialog.visible = false;
 
@@ -91,6 +103,12 @@ export const event = {
             lightning: scene.lighting?.lastFlash || false,
             environment: 'dark',
           });
+
+          // Toast feedback color-coded
+          const color = result.success ? '#8f8' : '#ff7070';
+          scene.skillChecks.toasts.show(`Rusty Key Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
+
           scene.dialog.setMode('monologue');
           scene.dialog.setText(result.flavor);
           scene.dialog.visible = true;
@@ -108,6 +126,7 @@ export const event = {
             audioManager.playSound('metal_creak', null, 0.8);
             scene.lighting.triggerLightning(0.1);
           }
+
           await openDoorSequence(
             result.success
               ? 'The key turns reluctantly, but it opens.\n\nA heavy scent of dust spills from the crack.'
@@ -122,6 +141,11 @@ export const event = {
             environment: 'dark',
             stress: 1,
           });
+
+          const color = result.success ? '#aef' : '#f55';
+          scene.skillChecks.toasts.show(`Resonance Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
+
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             result.success
@@ -141,7 +165,6 @@ export const event = {
           audioManager.playSound('wind_howl', null, 0.7);
           scene.lighting.triggerLightning(result.success ? 0.3 : 0.15);
 
-          // returns to menu, not open
           await reopenMenu();
           break;
         }
@@ -152,6 +175,11 @@ export const event = {
             environment: 'dark',
             stress: 0.5,
           });
+
+          const color = result.success ? '#ffe77a' : '#ff6060';
+          scene.skillChecks.toasts.show(`Faith Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
+
           scene.dialog.setMode('monologue');
           scene.dialog.setText(
             result.success
@@ -171,7 +199,6 @@ export const event = {
           audioManager.playSound('door_knock', null, 0.9);
           scene.lighting.triggerLightning(result.success ? 0.2 : 0.4);
 
-          // knocking doesn’t open
           await reopenMenu();
           break;
         }
@@ -182,6 +209,8 @@ export const event = {
           scene.dialog.setText('You grip the handle and pull.\n\nIt resists, then yields with a deep groan.');
           scene.dialog.visible = true;
           await waitForContinue();
+
+          scene.skillChecks.toasts.show('You open the door.', '#8f8', 3);
           await openDoorSequence(
             'The heavy air inside wraps around you like a second skin.\n\nSomething stirs deeper within the dark.'
           );
@@ -194,7 +223,9 @@ export const event = {
       }
     };
 
-    // initial
+    // ─────────────────────────────────────────────
+    // Initial menu
+    // ─────────────────────────────────────────────
     const opts = baseOptions.map(o => ({ ...o, disabled: false }));
     scene.dialog.setText(intro, opts, handler);
   },

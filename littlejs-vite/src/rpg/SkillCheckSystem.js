@@ -1,12 +1,84 @@
-// src/rpg/SkillCheckSystem.js — 🎲 Narrative RNG skill framework (with full debug logging)
+// src/rpg/SkillCheckSystem.js — 🎲 Narrative RNG skill framework + styled toast feedback
 'use strict';
+import { mainCanvasSize, vec2, Color, overlayContext } from 'littlejsengine';
+import { TextTheme } from '../ui/TextTheme.js';
 
-/**
- * SkillCheckSystem
- * ----------------
- * Handles thematic RNG skill checks (Willpower, Insight, Dexterity, Faith, Memory).
- * Supports item + environment modifiers and persistent degradation (e.g., Decay).
- */
+class ToastManager {
+  constructor() {
+    this.list = [];
+    this.fontFamily = TextTheme.fontFamily;
+    this.fontSize = 24;
+    this.spacing = 36;
+  }
+
+  /**
+   * Show a toast message. Supports inline color segments via {text,color}.
+   */
+  show(parts, duration = 2.8) {
+    // normalize: accept either string or array of parts
+    const msg = Array.isArray(parts) ? parts : [{ text: String(parts), color: '#fff' }];
+    this.list.push({ parts: msg, timer: duration, alpha: 0 });
+  }
+
+  update(dt) {
+    for (const t of this.list) {
+      t.timer -= dt;
+      if (t.timer > 0.3) t.alpha = Math.min(1, t.alpha + dt * 4);
+      else t.alpha = Math.max(0, t.alpha - dt * 6);
+    }
+    this.list = this.list.filter(t => t.timer > 0);
+  }
+
+  draw() {
+    if (!this.list.length) return;
+    const ctx = overlayContext;
+    const scale = window.devicePixelRatio || 1;
+    const w = mainCanvasSize.x * scale;
+    const h = mainCanvasSize.y * scale;
+    const cx = w / 2;
+    const startY = h * 0.18;
+    const pad = 24 * scale;
+
+    ctx.save();
+    ctx.resetTransform?.();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${this.fontSize * scale}px ${this.fontFamily}`;
+
+    let y = startY;
+    for (const t of this.list) {
+      if (t.alpha <= 0) continue;
+
+      // measure text width by summing parts
+      let textW = 0;
+      for (const p of t.parts) textW += ctx.measureText(p.text).width;
+      const boxW = textW + pad * 2;
+      const boxH = this.fontSize * scale + pad;
+      const x = cx - boxW / 2;
+
+      ctx.globalAlpha = t.alpha * 0.7;
+      ctx.fillStyle = TextTheme.boxColor.toString();
+      ctx.fillRect(x, y, boxW, boxH);
+      ctx.strokeStyle = TextTheme.borderColor.toString();
+      ctx.lineWidth = 2 * scale;
+      ctx.strokeRect(x, y, boxW, boxH);
+
+      // draw text parts inline
+      ctx.globalAlpha = t.alpha;
+      let drawX = x + pad;
+      for (const p of t.parts) {
+        ctx.fillStyle = p.color || '#fff';
+        ctx.fillText(p.text, drawX + ctx.measureText(p.text).width / 2, y + boxH / 2);
+        drawX += ctx.measureText(p.text).width;
+      }
+
+      y += boxH + this.spacing * scale;
+    }
+
+    ctx.restore();
+  }
+}
+
 export class SkillCheckSystem {
   constructor(inventory, scene) {
     this.inventory = inventory;
@@ -18,47 +90,38 @@ export class SkillCheckSystem {
       faith: 50,
       memory: 50,
     };
-    this.failCounters = new Map(); // e.g., keyID → failCount
+    this.failCounters = new Map();
+    this.toasts = new ToastManager();
   }
 
-  /**
-   * Run a named check with contextual modifiers and narrative hooks.
-   * @param {string} type - e.g. "resonance", "decay", "memory", "faith"
-   * @param {number} base - base chance 0–1
-   * @param {object} ctx - context (environment, stress, item, etc.)
-   * @returns {{success:boolean, roll:number, total:number, flavor:string}}
-   */
   roll(type, base = 0.5, ctx = {}) {
     const skill = this._mapTypeToSkill(type);
     const stat = this.stats[skill] ?? 50;
-
-    // Base and stat adjustment
     let chance = base * 100 + (stat - 50) * 0.5;
-
     const itemMod = this._applyItemMods(type, ctx);
     const envMod = this._applyEnvMods(ctx);
-
     chance += itemMod + envMod;
     chance = Math.max(1, Math.min(99, chance));
 
     const roll = Math.floor(Math.random() * 100) + 1;
     const success = roll <= chance;
-    const flavor = this._getFlavor(type, success, roll, chance);
+    const label = success ? 'Success' : 'Fail';
 
-    // 🧾 Detailed console output for testing and balancing
+    // 🎨 Color only the "Success"/"Fail" word
+    this.toasts.show([
+      { text: `${type.charAt(0).toUpperCase() + type.slice(1)} Check: `, color: '#fff' },
+      { text: label, color: success ? '#8f8' : '#f77' }
+    ]);
+
     console.groupCollapsed(`🎲 [SkillCheck] ${type.toUpperCase()} (${skill})`);
-    console.log(`• Stat value: ${stat}`);
-    console.log(`• Base chance: ${(base * 100).toFixed(1)}%`);
-    console.log(`• Stat influence: ${(stat - 50) * 0.5 >= 0 ? '+' : ''}${((stat - 50) * 0.5).toFixed(1)}%`);
-    console.log(`• Item modifier: ${itemMod >= 0 ? '+' : ''}${itemMod.toFixed(1)}%`);
-    console.log(`• Env modifier: ${envMod >= 0 ? '+' : ''}${envMod.toFixed(1)}%`);
-    console.log(`→ Final total chance: ${chance.toFixed(1)}%`);
-    console.log(`→ Roll result: ${roll}  → ${success ? '✅ SUCCESS' : '❌ FAIL'}`);
-    console.log(`→ Flavor: ${flavor}`);
+    console.log(`• Stat: ${stat} | Roll: ${roll}/${chance.toFixed(1)}% → ${success ? '✅' : '❌'}`);
     console.groupEnd();
 
-    return { success, roll, total: chance, flavor };
+    return { success, roll, total: chance };
   }
+
+  update(dt) { this.toasts.update(dt); }
+  draw() { this.toasts.draw(); }
 
   _mapTypeToSkill(type) {
     switch (type) {
@@ -76,7 +139,7 @@ export class SkillCheckSystem {
       if (type === 'resonance' && it.id === 'music_box') mod += 15;
       if (type === 'decay' && it.id === 'rusty_key') {
         const fails = this.failCounters.get(it.id) || 0;
-        mod -= fails * 8; // each failure rusts further
+        mod -= fails * 8;
       }
     }
     return mod;
@@ -90,38 +153,11 @@ export class SkillCheckSystem {
     return mod;
   }
 
-  _getFlavor(type, success, roll, chance) {
-    switch (type) {
-      case 'resonance':
-        return success
-          ? 'The melody hums softly. The fog recedes.'
-          : 'A warped note rings out. Whispers answer from the dark.';
-      case 'decay':
-        return success
-          ? 'The key turns with effort. Metal groans, but holds.'
-          : 'The rust flakes away. The teeth of the key bend slightly.';
-      case 'memory':
-        return success
-          ? 'Fragments align — the truth resurfaces.'
-          : 'Images twist. A false memory takes hold.';
-      case 'faith':
-        return success
-          ? 'A faint warmth steadies your heart.'
-          : 'Cold breath brushes your neck. The shadows lengthen.';
-      default:
-        return success ? 'You succeed.' : 'You fail.';
-    }
-  }
-
-  // 🧩 Optional decay tracking for items (e.g., rusty key)
   registerFailure(itemId) {
     const c = this.failCounters.get(itemId) || 0;
     this.failCounters.set(itemId, c + 1);
-    if (c + 1 >= 3) {
-      this._breakItem(itemId);
-    } else {
-      console.warn(`[SkillCheck] ${itemId} degradation: ${c + 1} / 3`);
-    }
+    if (c + 1 >= 3) this._breakItem(itemId);
+    else console.warn(`[SkillCheck] ${itemId} degradation: ${c + 1}/3`);
   }
 
   _breakItem(itemId) {
@@ -134,6 +170,7 @@ export class SkillCheckSystem {
         this.scene.dialog.setText('The rusty key snaps in the lock.');
         this.scene.dialog.visible = true;
       }
+      this.toasts.show([{ text: `${itemId} broke!`, color: '#ff8080' }], 3);
     }
   }
 }
