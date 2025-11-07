@@ -62,22 +62,34 @@ export class GameScene {
 
       // Add to inventory
       if (item.itemId === 'rusty_key') {
-        this.inventory.addItem('rusty_key', 'RUSTY KEY', '/assets/items/rusty_key.png', 'A corroded iron key.', 1, 1, 2);
+        this.inventory.addItem(
+          'rusty_key',
+          'RUSTY KEY',
+          '/assets/items/rusty_key.png',
+          'A corroded iron key. Its fragile shape may falter, yet it carries a faint sense of luck.',
+          1, 1, 2,
+          { dexterity: -5, faith: +10 } // 🗝️ penalty to dexterity, bonus to faith
+        );
+
         this.dialog.setMode('monologue');
-        this.dialog.setText(`You picked up a corroded iron key.`);
+        this.dialog.setText('You picked up a corroded iron key.');
         this.dialog.visible = true;
-      } 
+      }
+
       if (item.itemId === 'music_box') {
         this.inventory.addItem(
           'music_box',
           'MUSIC BOX',
           '/assets/items/musicbox.png',
-          'A small music box.',
-          1, 2, 2
+          'A small music box that hums with quiet warmth.',
+          1, 2, 2,
+          { willpower: +15, faith: +5 } // 🎶 boosts willpower & faith
         );
+
         this.dialog.setMode('monologue');
         this.dialog.setText('You picked up a small music box.');
         this.dialog.visible = true;
+
         fadeAudioSystem.triggerFadeSfxSequence('music_box', 1, 20, 1);
       }
     });

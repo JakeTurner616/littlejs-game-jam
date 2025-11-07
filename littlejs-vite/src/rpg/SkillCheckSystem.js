@@ -1,4 +1,4 @@
-// src/rpg/SkillCheckSystem.js — 🎲 Narrative RNG skill framework + styled toast feedback
+// src/rpg/SkillCheckSystem.js — 🎲 Narrative RNG skill framework + item-based stat modifiers + styled toast feedback
 'use strict';
 import { mainCanvasSize, vec2, Color, overlayContext } from 'littlejsengine';
 import { TextTheme } from '../ui/TextTheme.js';
@@ -11,11 +11,7 @@ class ToastManager {
     this.spacing = 36;
   }
 
-  /**
-   * Show a toast message. Supports inline color segments via {text,color}.
-   */
   show(parts, duration = 2.8) {
-    // normalize: accept either string or array of parts
     const msg = Array.isArray(parts) ? parts : [{ text: String(parts), color: '#fff' }];
     this.list.push({ parts: msg, timer: duration, alpha: 0 });
   }
@@ -49,7 +45,6 @@ class ToastManager {
     for (const t of this.list) {
       if (t.alpha <= 0) continue;
 
-      // measure text width by summing parts
       let textW = 0;
       for (const p of t.parts) textW += ctx.measureText(p.text).width;
       const boxW = textW + pad * 2;
@@ -63,7 +58,6 @@ class ToastManager {
       ctx.lineWidth = 2 * scale;
       ctx.strokeRect(x, y, boxW, boxH);
 
-      // draw text parts inline
       ctx.globalAlpha = t.alpha;
       let drawX = x + pad;
       for (const p of t.parts) {
@@ -71,7 +65,6 @@ class ToastManager {
         ctx.fillText(p.text, drawX + ctx.measureText(p.text).width / 2, y + boxH / 2);
         drawX += ctx.measureText(p.text).width;
       }
-
       y += boxH + this.spacing * scale;
     }
 
@@ -98,6 +91,7 @@ export class SkillCheckSystem {
     const skill = this._mapTypeToSkill(type);
     const stat = this.stats[skill] ?? 50;
     let chance = base * 100 + (stat - 50) * 0.5;
+
     const itemMod = this._applyItemMods(type, ctx);
     const envMod = this._applyEnvMods(ctx);
     chance += itemMod + envMod;
@@ -107,14 +101,13 @@ export class SkillCheckSystem {
     const success = roll <= chance;
     const label = success ? 'Success' : 'Fail';
 
-    // 🎨 Color only the "Success"/"Fail" word
     this.toasts.show([
       { text: `${type.charAt(0).toUpperCase() + type.slice(1)} Check: `, color: '#fff' },
       { text: label, color: success ? '#8f8' : '#f77' }
     ]);
 
     console.groupCollapsed(`🎲 [SkillCheck] ${type.toUpperCase()} (${skill})`);
-    console.log(`• Stat: ${stat} | Roll: ${roll}/${chance.toFixed(1)}% → ${success ? '✅' : '❌'}`);
+    console.log(`• Stat: ${stat} | Items: ${itemMod >= 0 ? '+' : ''}${itemMod} | Roll: ${roll}/${chance.toFixed(1)}% → ${success ? '✅' : '❌'}`);
     console.groupEnd();
 
     return { success, roll, total: chance };
@@ -134,11 +127,19 @@ export class SkillCheckSystem {
   }
 
   _applyItemMods(type, ctx) {
+    const skill = this._mapTypeToSkill(type);
     let mod = 0;
+
     for (const it of this.inventory.items) {
-      if (type === 'resonance' && it.id === 'music_box') mod += 15;
-      if (type === 'decay' && it.id === 'rusty_key') {
-        const fails = this.failCounters.get(it.id) || 0;
+      if (!it.mods) continue;
+      if (skill in it.mods) mod += it.mods[skill];
+    }
+
+    // degradation for rusty key
+    if (type === 'decay') {
+      const rusty = this.inventory.items.find(i => i.id === 'rusty_key');
+      if (rusty) {
+        const fails = this.failCounters.get('rusty_key') || 0;
         mod -= fails * 8;
       }
     }

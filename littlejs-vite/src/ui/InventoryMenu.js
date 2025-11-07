@@ -1,4 +1,4 @@
-// src/ui/InventoryMenu.js — 🧩 Resident Evil–style inventory (centered drag, snapback, placement highlight)
+// src/ui/InventoryMenu.js — 🧩 Resident Evil–style inventory + item stat modifiers in tooltip
 'use strict';
 import {
   overlayContext,
@@ -61,7 +61,18 @@ export class InventoryMenu {
     return null;
   }
 
-  addItem(id, name, iconPath, desc, count = 1, gridW, gridH) {
+  /**
+   * Add an item to the inventory.
+   * @param {string} id
+   * @param {string} name
+   * @param {string} iconPath
+   * @param {string} desc
+   * @param {number} count
+   * @param {number} gridW
+   * @param {number} gridH
+   * @param {object} mods  Example: { willpower:+10, faith:-5 }
+   */
+  addItem(id, name, iconPath, desc, count = 1, gridW, gridH, mods = null) {
     const existing = this.items.find(i => i.id === id);
     if (existing) {
       existing.count += count;
@@ -85,15 +96,13 @@ export class InventoryMenu {
 
     this.items.push({
       id, name, iconPath, iconImage: img, desc, count,
-      gridW: w, gridH: h, slotX: slot.x, slotY: slot.y
+      gridW: w, gridH: h, slotX: slot.x, slotY: slot.y,
+      mods
     });
     console.log(`[InventoryMenu] ✅ Placed ${id} at ${slot.x},${slot.y}`);
   }
 
-  toggle() {
-    this.visible = !this.visible;
-    this.fade = 0;
-  }
+  toggle() { this.visible = !this.visible; this.fade = 0; }
 
   update(dt) {
     const target = this.visible ? 1 : 0;
@@ -103,9 +112,6 @@ export class InventoryMenu {
 
     if (keyWasPressed('ArrowRight')) this.selectedIndex = (this.selectedIndex + 1) % this.items.length;
     if (keyWasPressed('ArrowLeft')) this.selectedIndex = (this.selectedIndex - 1 + this.items.length) % this.items.length;
-    if (keyWasPressed('ArrowDown')) this.selectedIndex = (this.selectedIndex + this.columns) % this.items.length;
-    if (keyWasPressed('ArrowUp')) this.selectedIndex = (this.selectedIndex - this.columns + this.items.length) % this.items.length;
-
     if (this.visible && keyWasPressed('Escape')) this.visible = false;
     if (keyWasPressed('Enter') && this.items[this.selectedIndex] && this.onUse)
       this.onUse(this.items[this.selectedIndex]);
@@ -115,7 +121,6 @@ export class InventoryMenu {
     const my = mousePosScreen.y * uiScale;
     this.hoverIndex = -1;
 
-    // hover + drag start
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];
       const gx = boxX + this.outerMargin + it.slotX * this.slotSize;
@@ -134,7 +139,6 @@ export class InventoryMenu {
       }
     }
 
-    // release drag — validated placement
     if (this.draggingItem && !mouseIsDown(0)) {
       const it = this.draggingItem;
       const gridLeft = boxX + this.outerMargin;
@@ -143,15 +147,9 @@ export class InventoryMenu {
       const row = Math.floor((my - gridTop - (it.gridH * this.slotSize) / 2) / this.slotSize);
       const clampedCol = Math.max(0, Math.min(this.columns - it.gridW, col));
       const clampedRow = Math.max(0, Math.min(this.rows - it.gridH, row));
-
       const validDrop = !this._isOccupied(clampedCol, clampedRow, it.gridW, it.gridH, it);
-      if (validDrop) {
-        it.slotX = clampedCol;
-        it.slotY = clampedRow;
-      } else {
-        it.slotX = this.dragOrigin.x;
-        it.slotY = this.dragOrigin.y;
-      }
+      if (validDrop) { it.slotX = clampedCol; it.slotY = clampedRow; }
+      else { it.slotX = this.dragOrigin.x; it.slotY = this.dragOrigin.y; }
       this.draggingItem = null;
       this.dragOrigin = null;
     }
@@ -212,7 +210,6 @@ export class InventoryMenu {
       overlayContext.stroke();
     }
 
-    // draw fixed items
     for (const it of this.items) {
       if (it === this.draggingItem) continue;
       const gx = gridLeft + it.slotX * this.slotSize;
@@ -231,72 +228,68 @@ export class InventoryMenu {
         overlayContext.drawImage(img, gx + 4, gy + 4, gw - 8, gh - 8);
     }
 
-    // drag ghost and placement outline
-    if (this.draggingItem) {
-      const it = this.draggingItem;
-      const img = it.iconImage;
-      const gw = it.gridW * this.slotSize;
-      const gh = it.gridH * this.slotSize;
-      const mx = mousePosScreen.x * uiScale;
-      const my = mousePosScreen.y * uiScale;
-      const gx = mx - (it.gridW * this.slotSize) / 2;
-      const gy = my - (it.gridH * this.slotSize) / 2;
-
-      // compute potential drop position
-      const gridLeft = boxX + this.outerMargin;
-      const gridTop = boxY + 40 * uiScale + this.outerMargin;
-      const col = Math.floor((mx - gridLeft - (it.gridW * this.slotSize) / 2) / this.slotSize);
-      const row = Math.floor((my - gridTop - (it.gridH * this.slotSize) / 2) / this.slotSize);
-      const clampedCol = Math.max(0, Math.min(this.columns - it.gridW, col));
-      const clampedRow = Math.max(0, Math.min(this.rows - it.gridH, row));
-      const valid = !this._isOccupied(clampedCol, clampedRow, it.gridW, it.gridH, it);
-
-      // highlight placement area
-      const px = gridLeft + clampedCol * this.slotSize;
-      const py = gridTop + clampedRow * this.slotSize;
-      overlayContext.strokeStyle = valid ? 'rgba(120,255,120,0.9)' : 'rgba(255,80,80,0.9)';
-      overlayContext.lineWidth = 3;
-      overlayContext.strokeRect(px, py, gw, gh);
-
-      // ghost image
-      overlayContext.globalAlpha = 0.8;
-      overlayContext.fillStyle = 'rgba(120,255,120,0.1)';
-      overlayContext.fillRect(gx, gy, gw, gh);
-      if (img && img.complete)
-        overlayContext.drawImage(img, gx + 4, gy + 4, gw - 8, gh - 8);
-      overlayContext.globalAlpha = 1;
-    }
-
-    // hover tooltip
+    // Tooltip with modifiers
     if (this.hoverIndex >= 0) {
-      const it = this.items[this.hoverIndex];
-      const mx = mousePosScreen.x * uiScale;
-      const my = mousePosScreen.y * uiScale;
-      const tooltipW = 280 * uiScale;
-      const tooltipH = 110 * uiScale;
-      const tx = Math.min(mx + 20, canvasW - tooltipW - 10);
-      const ty = Math.min(my + 20, canvasH - tooltipH - 10);
+  const it = this.items[this.hoverIndex];
+  const mx = mousePosScreen.x * uiScale;
+  const my = mousePosScreen.y * uiScale;
+  const tooltipW = 300 * uiScale;
+  const maxTextW = tooltipW - 28 * uiScale;
 
-      overlayContext.fillStyle = 'rgba(0,0,0,0.88)';
-      overlayContext.fillRect(tx, ty, tooltipW, tooltipH);
-      overlayContext.strokeStyle = 'rgba(255,255,255,0.25)';
-      overlayContext.strokeRect(tx, ty, tooltipW, tooltipH);
+  // Measure description lines first
+  overlayContext.font = `${20 * uiScale}px ${this.fontFamily}`;
+  const wrapped = this._wrapText(it.desc || '', maxTextW);
+  const descH = wrapped.length * 24 * uiScale;
 
-      overlayContext.font = `${19 * uiScale}px ${this.fontFamily}`;
-      overlayContext.fillStyle = '#fff';
-      overlayContext.textAlign = 'left';
-      overlayContext.textBaseline = 'top';
-      overlayContext.fillText(it.name, tx + 12, ty + 10);
+  // Measure modifier lines (if any)
+  let modH = 0;
+  if (it.mods && Object.keys(it.mods).length)
+    modH = 28 * uiScale + Object.keys(it.mods).length * 22 * uiScale;
 
-      overlayContext.font = `${25.5 * uiScale}px ${this.fontFamily}`;
-      overlayContext.fillStyle = 'rgba(255,255,255,0.85)';
-      const wrapped = this._wrapText(it.desc || '', tooltipW - 24);
-      let yy = ty + 34;
-      for (const line of wrapped) {
-        overlayContext.fillText(line, tx + 12, yy);
-        yy += 29 * uiScale;
-      }
+  // Dynamic tooltip height
+  const tooltipH = 70 * uiScale + descH + modH;
+  const tx = Math.min(mx + 20, canvasW - tooltipW - 10);
+  const ty = Math.min(my + 20, canvasH - tooltipH - 10);
+
+  // Background and border
+  overlayContext.fillStyle = 'rgba(0,0,0,0.9)';
+  overlayContext.fillRect(tx, ty, tooltipW, tooltipH);
+  overlayContext.strokeStyle = 'rgba(255,255,255,0.25)';
+  overlayContext.strokeRect(tx, ty, tooltipW, tooltipH);
+
+  // Title
+  overlayContext.font = `${19 * uiScale}px ${this.fontFamily}`;
+  overlayContext.fillStyle = '#fff';
+  overlayContext.textAlign = 'left';
+  overlayContext.textBaseline = 'top';
+  overlayContext.fillText(it.name, tx + 12, ty + 10);
+
+  // Description (wrapped)
+  overlayContext.font = `${20 * uiScale}px ${this.fontFamily}`;
+  overlayContext.fillStyle = 'rgba(255,255,255,0.85)';
+  let yy = ty + 34 * uiScale;
+  for (const line of wrapped) {
+    overlayContext.fillText(line, tx + 12, yy);
+    yy += 24 * uiScale;
+  }
+
+  // Modifiers (if any)
+  if (it.mods && Object.keys(it.mods).length) {
+    yy += 8 * uiScale;
+    overlayContext.font = `${18 * uiScale}px ${this.fontFamily}`;
+    overlayContext.fillStyle = 'rgba(255,255,255,0.75)';
+    overlayContext.fillText('Modifiers:', tx + 12, yy);
+    yy += 20 * uiScale;
+
+    for (const [stat, val] of Object.entries(it.mods)) {
+      const color = val > 0 ? '#80ff80' : '#ff8080';
+      const sign = val > 0 ? '+' : '';
+      overlayContext.fillStyle = color;
+      overlayContext.fillText(`• ${stat.charAt(0).toUpperCase() + stat.slice(1)} ${sign}${val}`, tx + 20, yy);
+      yy += 20 * uiScale;
     }
+  }
+}
 
     overlayContext.restore();
   }

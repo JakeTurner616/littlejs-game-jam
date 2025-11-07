@@ -15,26 +15,22 @@ export class DialogBox {
   constructor(mode = 'dialogue') {
     this.mode = mode;
     this.fontFamily = TextTheme.fontFamily;
-    this.text = '';
+    this.text = '';              // ✅ always defined
     this.visible = false;
     this.typingSpeed = 30;
     this.typeProgress = 0;
     this.pauseTimer = 0;
     this.pauseDuration = 0.7;
-
     this.scrollY = 0;
     this.scrollSpeed = 25;
     this.portrait = null;
     this.options = null;
     this.hoverIndex = -1;
     this.onOptionSelect = null;
-
     this._boxRect = null;
   }
 
-  isActive() {
-    return this.visible && this.text;
-  }
+  isActive() { return this.visible && this.text; }
 
   containsMouse() {
     if (!this._boxRect || !this.visible) return false;
@@ -79,10 +75,10 @@ export class DialogBox {
 
   setText(text, options = null, onOptionSelect = null) {
     if (this.visible) {
-      this.typeProgress = this.text.length;
+      this.typeProgress = (this.text || '').length;
       this.visible = false;
     }
-    this.text = text;
+    this.text = String(text ?? '');  // ✅ prevent undefined
     this.typeProgress = 0;
     this.pauseTimer = 0;
     this.scrollY = 0;
@@ -94,12 +90,8 @@ export class DialogBox {
 
   update(dt) {
     if (!this.visible || !this.text) return;
-
-    const mx = mousePosScreen.x;
-    const my = mousePosScreen.y;
-
-    if (mouseWasPressed(0) && this.containsMouse())
-      window.__clickConsumed = true;
+    const mx = mousePosScreen.x, my = mousePosScreen.y;
+    if (mouseWasPressed(0) && this.containsMouse()) window.__clickConsumed = true;
 
     if (keyWasPressed('Space')) {
       if (this.typeProgress < this.text.length)
@@ -108,10 +100,7 @@ export class DialogBox {
         this.visible = false;
     }
 
-    if (this.pauseTimer > 0) {
-      this.pauseTimer -= dt;
-      return;
-    }
+    if (this.pauseTimer > 0) { this.pauseTimer -= dt; return; }
 
     const prev = Math.floor(this.typeProgress);
     if (prev < this.text.length) {
@@ -121,7 +110,7 @@ export class DialogBox {
         this.pauseTimer = this.pauseDuration;
     }
 
-    // dialogue mode scrolling + hover
+    // dialogue options (unchanged)
     if (this.mode === 'dialogue' && this.options) {
       const uiScale = window.devicePixelRatio || 1;
       const canvasW = mainCanvasSize.x * uiScale;
@@ -149,17 +138,12 @@ export class DialogBox {
 
       const totalHeight = this.options.length * (optH + spacing);
       const maxScroll = Math.max(0, totalHeight - optAreaH);
-
-      if (insideOptArea) {
-        const wheelDelta = mouseWheel;
-        if (wheelDelta) {
-          this.scrollY += wheelDelta * this.scrollSpeed;
-          if (this.scrollY < 0) this.scrollY = 0;
-          if (this.scrollY > maxScroll) this.scrollY = maxScroll;
-        }
+      if (insideOptArea && mouseWheel) {
+        this.scrollY += mouseWheel * this.scrollSpeed;
+        if (this.scrollY < 0) this.scrollY = 0;
+        if (this.scrollY > maxScroll) this.scrollY = maxScroll;
       }
 
-      // hover detection uses unscrolled logical rects
       this.hoverIndex = -1;
       for (let i = 0; i < this.options.length; i++) {
         const r = this.options[i].rect;
@@ -184,8 +168,7 @@ export class DialogBox {
     let line = '';
     for (const word of words) {
       const test = line ? `${line} ${word}` : word;
-      const width = ctx.measureText(test).width;
-      if (width > maxWidth && line) {
+      if (ctx.measureText(test).width > maxWidth && line) {
         lines.push(line);
         line = word;
       } else line = test;
@@ -194,29 +177,28 @@ export class DialogBox {
     return lines;
   }
 
-  wrapTextWithPortrait(ctx, text, boxX, boxY, boxW, boxH, portraitH, portraitIndentW) {
+  wrapTextWithPortrait(ctx, text, boxX, boxY, boxW, boxH, portraitH, indentW) {
     const words = text.split(' ');
     const lines = [];
     let line = '';
     let y = 0;
     for (const word of words) {
       const test = line ? `${line} ${word}` : word;
-      const maxW = (y < portraitH) ? boxW - portraitIndentW - 10 : boxW;
-      const w = ctx.measureText(test).width;
-      if (w > maxW && line) {
-        lines.push({ text: line, indent: (y < portraitH) ? portraitIndentW : 0 });
+      const maxW = (y < portraitH) ? boxW - indentW - 10 : boxW;
+      if (ctx.measureText(test).width > maxW && line) {
+        lines.push({ text: line, indent: (y < portraitH) ? indentW : 0 });
         y += TextTheme.fontSize * 1.4;
         line = word;
       } else line = test;
     }
-    if (line) lines.push({ text: line, indent: (y < portraitH) ? portraitIndentW : 0 });
+    if (line) lines.push({ text: line, indent: (y < portraitH) ? indentW : 0 });
     return lines;
   }
 
   draw() {
     if (!this.visible) return;
-
-    const shownText = this.text.substring(0, Math.floor(this.typeProgress));
+    const fullText = String(this.text ?? '');        // ✅ guard
+    const shownText = fullText.substring(0, Math.floor(this.typeProgress));
     const uiScale = window.devicePixelRatio || 1;
     const canvasW = mainCanvasSize.x * uiScale;
     const canvasH = mainCanvasSize.y * uiScale;
