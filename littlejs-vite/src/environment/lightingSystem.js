@@ -1,47 +1,31 @@
-// src/environment/lightingSystem.js
+// src/environment/lightingSystem.js — ⚡ Final Final Version
 'use strict';
-import { drawRect, vec2, hsl, Color, overlayContext, mainCanvas } from 'littlejsengine';
+import { drawRect, vec2, Color, overlayContext, mainCanvas } from 'littlejsengine';
 
-/**
- * LightingSystem — optimized rain + lightning
- * -------------------------------------------------
- * • Precomputed pooled rain streaks
- * • No allocations during update/render
- * • Cached color objects
- * • Now draws lightning directly to overlayContext
- */
 export class LightingSystem {
   constructor() {
-    // Core toggles
     this.rainEnabled = true;
     this.lightningEnabled = false;
-
-    // Render modes
     this.rainRenderMode = 'overlay';
     this.lightningRenderMode = 'overlay';
-
-    // Lightning state
     this.lightningTimer = 0;
     this.lightningFlash = 0;
 
-    // Rain system
+    // Rain setup
     this.poolSize = 400;
     this.spawnW = 64;
     this.spawnH = 40;
-    this.angle = Math.PI / 12; // slight diagonal
+    this.angle = Math.PI / 12;
     this.baseSpeed = 24;
 
-    // Cached values for performance
     this._sinA = Math.sin(this.angle);
     this._cosA = Math.cos(this.angle);
     this._rainColor = new Color(0.75, 0.85, 1, 1);
-    this._lightColor = new Color(1, 1, 1, 0);
 
     this.rainDrops = new Array(this.poolSize);
     this._initPool();
   }
 
-  //───────────────────────────────────────────────
   setRainMode(m = 'overlay') { this.rainRenderMode = m; }
   setLightningMode(m = 'overlay') { this.lightningRenderMode = m; }
   toggleRain() { this.rainEnabled = !this.rainEnabled; }
@@ -52,13 +36,11 @@ export class LightingSystem {
     this.lightningFlash = 1;
   }
 
-  //───────────────────────────────────────────────
   _initPool() {
     const { poolSize, spawnW, spawnH, baseSpeed, _sinA, _cosA } = this;
-    const drops = this.rainDrops;
     for (let i = 0; i < poolSize; i++) {
       const spd = baseSpeed * (0.9 + Math.random() * 0.3);
-      drops[i] = {
+      this.rainDrops[i] = {
         x: Math.random() * spawnW - spawnW * 0.5,
         y: Math.random() * spawnH,
         vx: _sinA * spd,
@@ -70,16 +52,11 @@ export class LightingSystem {
     }
   }
 
-  //───────────────────────────────────────────────
   update(dt) {
-    // Lightning fade
     if (this.lightningEnabled) {
       const t = (this.lightningTimer -= dt);
       if (t > 0) this.lightningFlash = t * 10;
-      else {
-        this.lightningEnabled = false;
-        this.lightningFlash = 0;
-      }
+      else { this.lightningEnabled = false; this.lightningFlash = 0; }
     }
     if (!this.rainEnabled) return;
 
@@ -96,16 +73,20 @@ export class LightingSystem {
   }
 
   //───────────────────────────────────────────────
-  renderBase(cam = vec2(0, 0)) {
-    drawRect(cam, vec2(128, 128), hsl(0, 0, 0.15));
+  // Ambient base darkness in canvas space (not world)
+  //───────────────────────────────────────────────
+  renderBase() {
+    const ctx = overlayContext;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    ctx.restore();
   }
 
   renderMidLayer(cam = vec2(0, 0)) {
-    if (this.lightningRenderMode === 'background' && this.lightningFlash > 0) {
-      const c = this._lightColor;
-      c.a = this.lightningFlash * 0.35;
-      drawRect(cam, vec2(128, 128), c);
-    }
+    if (this.lightningRenderMode === 'background' && this.lightningFlash > 0)
+      this._renderLightningOverlay(0.35);
     if (this.rainRenderMode === 'background' && this.rainEnabled)
       this._renderRain(cam, true);
   }
@@ -114,11 +95,11 @@ export class LightingSystem {
     if (this.rainRenderMode === 'overlay' && this.rainEnabled)
       this._renderRain(cam, false);
     if (this.lightningRenderMode === 'overlay' && this.lightningFlash > 0)
-      this._renderLightningOverlay();
+      this._renderLightningOverlay(0.45);
   }
 
   _renderRain(cam, bg) {
-    const { rainDrops, poolSize, spawnW, spawnH, _rainColor } = this;
+    const { rainDrops, poolSize, spawnW, _rainColor } = this;
     const bright = bg ? 0.25 : 0.55;
     const halfW = 32, halfH = 24;
     for (let i = 0; i < poolSize; i++) {
@@ -132,15 +113,16 @@ export class LightingSystem {
   }
 
   //───────────────────────────────────────────────
-  // Draw lightning directly to overlayContext
+  // Lightning drawn directly to overlayContext (full canvas)
   //───────────────────────────────────────────────
-  _renderLightningOverlay() {
-    const a = this.lightningFlash * 0.45;
+  _renderLightningOverlay(strength = 0.45) {
+    const a = this.lightningFlash * strength;
     if (a <= 0) return;
+
     const ctx = overlayContext;
     ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = `rgba(255,255,255,${Math.min(a, 1)})`;
     ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
     ctx.restore();
   }

@@ -57,32 +57,42 @@ export class DialogBox {
     }
   }
 
-  setMode(mode) {
-    if (this.mode === 'monologue' && mode === 'dialogue' && this.visible) {
-      this.visible = false;
-      this.text = '';
-      this.typeProgress = 0;
-    }
-    if (this.mode !== mode) {
-      this.mode = mode;
-      this.scrollY = 0;
-      this.typeProgress = 0;
-      this.text = '';
-      this.options = null;
-      this.visible = false;
-    } else this.mode = mode;
+setMode(mode) {
+  // Always fully reset when switching modes
+  if (this.mode !== mode) {
+    this.mode = mode;
+    this.scrollY = 0;
+    this.typeProgress = 0;
+    this.text = '';
+    this.options = null;
+    this.hoverIndex = -1;
+    this.onOptionSelect = null;
+    this.visible = false;   // ✅ ensures no empty flash
+    return;
   }
+
+  // same-mode reinit (e.g. reusing dialogue)
+  if (mode === 'dialogue') {
+    this.scrollY = 0;
+    this.hoverIndex = -1;
+  }
+}
+
 
   setText(text, options = null, onOptionSelect = null) {
     if (this.visible) {
       this.typeProgress = (this.text || '').length;
       this.visible = false;
     }
-    this.text = String(text ?? '');  // ✅ prevent undefined
+    this.text = String(text ?? '');
     this.typeProgress = 0;
     this.pauseTimer = 0;
     this.scrollY = 0;
-    this.visible = true;
+
+    // show only if there’s meaningful text or options
+    const hasContent = (this.text && this.text.trim().length) || (options && options.length);
+    this.visible = !!hasContent;
+
     this.options = options ? options.map(o => ({ ...o, rect: null })) : null;
     this.onOptionSelect = onOptionSelect;
     this.hoverIndex = -1;

@@ -1,11 +1,13 @@
-// src/events/doorTeleport1.js — 🕯️ Narrative door + skill-check HUD feedback (toasts integrated)
+// src/events/doorTeleport1.js — 🕯️ Narrative door + fog reveal AFTER teleport completes
 'use strict';
 import { keyWasPressed } from 'littlejsengine';
 import { audioManager } from '../audio/AudioManager.js';
+import { getPortrait } from '../util/portraitCache.js';
 
 export const event = {
   id: 'door_teleport_1',
   description: 'Narrative entry door: multi-skill checks (some return to menu, some open)',
+
   async execute(scene, player) {
     if (scene.dialog.isActive()) return;
     player.frozen = true;
@@ -29,7 +31,8 @@ export const event = {
       check();
     });
 
-    await scene.dialog.loadPortrait('/assets/portraits/doorway.png');
+    const portrait = await getPortrait('/assets/portraits/doorway.png');
+    scene.dialog.portrait = portrait;
     scene.dialog.setMode('dialogue');
     scene.dialog.visible = true;
 
@@ -56,16 +59,26 @@ export const event = {
       });
 
     // ─────────────────────────────────────────────
-    // Transition helper: open the door
+    // Transition helper: open the door + teleport
     // ─────────────────────────────────────────────
     const openDoorSequence = async (finalText) => {
       audioManager.playSound('door_open', null, 1);
-      scene.fog?.fadeOut();
-      scene.lighting?.setRainMode('background');
-      scene.lighting?.setLightningMode('background');
+      scene.fog?.setBackgroundMode?.(true);
+      scene.fog?.setDensity?.(0.9);
+      scene.lighting?.setRainMode?.('background');
+      scene.lighting?.setLightningMode?.('background');
       scene.lighting.lightningEnabled = false;
 
+      // 🔹 fade to white/grey before map switch
+      scene.fog?.fadeOut();
+      await new Promise((r) => setTimeout(r, 500));
+
+      // 🔹 perform the actual teleport
       await scene.loadNewMap('/assets/map/inside.tmj', 9.857, 11.983);
+      scene.fog?.setBackgroundMode?.(false);
+      scene.fog.enabled = true;
+
+      // 🔹 narrative line appears AFTER teleport
       scene.dialog.setMode('monologue');
       scene.dialog.setText(
         finalText ||
@@ -73,6 +86,10 @@ export const event = {
       );
       scene.dialog.visible = true;
       await waitForContinue();
+
+      // ✅ reveal Fog of War only NOW, after teleport + final text
+      scene.fogOfWar?.revealByEvent?.('door_teleport_1');
+
       player.frozen = false;
     };
 
@@ -80,12 +97,14 @@ export const event = {
     // Menu reopen helper
     // ─────────────────────────────────────────────
     const reopenMenu = async () => {
-      const opts = baseOptions.map(o => ({
+      const opts = baseOptions.map((o) => ({
         ...o,
         disabled: used.has(o.value),
       }));
       scene.dialog.setMode('dialogue');
       scene.dialog.setText(intro, opts, handler);
+      scene.dialog.portrait = portrait;
+      scene.dialog.visible = true;
     };
 
     // ─────────────────────────────────────────────
@@ -94,7 +113,10 @@ export const event = {
     const handler = async (value) => {
       if (used.has(value)) return;
       used.add(value);
+
       scene.dialog.visible = false;
+      scene.dialog.text = '';
+      scene.dialog.typeProgress = 0;
 
       switch (value) {
         // ————————————————————————————————————
@@ -104,14 +126,17 @@ export const event = {
             environment: 'dark',
           });
 
-          // Toast feedback color-coded
           const color = result.success ? '#8f8' : '#ff7070';
-          scene.skillChecks.toasts.show(`Rusty Key Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(
+            `Rusty Key Check: ${result.success ? 'Success' : 'Fail'}`,
+            color,
+            3
+          );
           scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
 
           scene.dialog.setMode('monologue');
           scene.dialog.setText(result.flavor);
-          scene.dialog.visible = true;
+          scene.dialog.visible = false;
           await waitForContinue();
 
           if (result.success) {
@@ -143,7 +168,11 @@ export const event = {
           });
 
           const color = result.success ? '#aef' : '#f55';
-          scene.skillChecks.toasts.show(`Resonance Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(
+            `Resonance Check: ${result.success ? 'Success' : 'Fail'}`,
+            color,
+            3
+          );
           scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
 
           scene.dialog.setMode('monologue');
@@ -177,7 +206,11 @@ export const event = {
           });
 
           const color = result.success ? '#ffe77a' : '#ff6060';
-          scene.skillChecks.toasts.show(`Faith Check: ${result.success ? 'Success' : 'Fail'}`, color, 3);
+          scene.skillChecks.toasts.show(
+            `Faith Check: ${result.success ? 'Success' : 'Fail'}`,
+            color,
+            3
+          );
           scene.skillChecks.toasts.show(result.flavor, '#fff', 4);
 
           scene.dialog.setMode('monologue');
@@ -206,7 +239,9 @@ export const event = {
         // ————————————————————————————————————
         case 'open': {
           scene.dialog.setMode('monologue');
-          scene.dialog.setText('You grip the handle and pull.\n\nIt resists, then yields with a deep groan.');
+          scene.dialog.setText(
+            'You grip the handle and pull.\n\nIt resists, then yields with a deep groan.'
+          );
           scene.dialog.visible = true;
           await waitForContinue();
 
@@ -226,7 +261,9 @@ export const event = {
     // ─────────────────────────────────────────────
     // Initial menu
     // ─────────────────────────────────────────────
-    const opts = baseOptions.map(o => ({ ...o, disabled: false }));
+    const opts = baseOptions.map((o) => ({ ...o, disabled: false }));
     scene.dialog.setText(intro, opts, handler);
+    scene.dialog.portrait = portrait;
+    scene.dialog.visible = true;
   },
 };

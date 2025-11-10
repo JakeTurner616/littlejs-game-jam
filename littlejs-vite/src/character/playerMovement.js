@@ -1,4 +1,4 @@
-// src/character/playerMovement.js — 🧭 click-consume aware
+// src/character/playerMovement.js — 🧭 click-consume aware + emitter cleanup fix
 'use strict';
 import {
   keyIsDown, mouseWasPressed, screenToWorld, mousePosScreen,
@@ -14,20 +14,25 @@ export function handlePlayerMovement(p) {
   // 🟡 Click-to-move (skip if another system consumed the click)
   if (mouseWasPressed(0) && !window.__clickConsumed) {
     const target = screenToWorld(mousePosScreen);
-    p.clickTarget = target;
-    const path = p.buildSmartPath(target);
-    p.path = path;
 
+    // 🧹 Always clear old marker emitter before setting a new one
     if (p.markerEmitter) {
       p.markerEmitter.emitRate = 0;
       p.markerEmitter.emitTime = 0;
+      if (typeof p.markerEmitter.stop === 'function')
+        p.markerEmitter.stop();
       p.markerEmitter = null;
     }
+
+    p.clickTarget = target;
+    const path = p.buildSmartPath(target);
+    p.path = path;
 
     if (path && path.length > 0) {
       p.destinationMarker = target;
       p.markerAlpha = 1.0;
 
+      // ✨ New emitter for the destination marker
       p.markerEmitter = new ParticleEmitter(
         target, 0, 0.6, 0, 6, 0.2, undefined,
         new Color(0.9, 0.75, 0.3, 0.45),
@@ -141,6 +146,8 @@ export function handlePlayerMovement(p) {
         if (p.markerEmitter) {
           p.markerEmitter.emitRate = 0;
           p.markerEmitter.emitTime = 0.4;
+          if (typeof p.markerEmitter.stop === 'function')
+            p.markerEmitter.stop();
           p.markerEmitter = null;
         }
       }
@@ -150,6 +157,8 @@ export function handlePlayerMovement(p) {
   if (pathCanceled && p.markerEmitter) {
     p.markerEmitter.emitRate = 0;
     p.markerEmitter.emitTime = 0.5;
+    if (typeof p.markerEmitter.stop === 'function')
+      p.markerEmitter.stop();
     p.markerEmitter = null;
   }
 }
@@ -160,12 +169,6 @@ function angleToDir(a) {
   return (Math.floor(((a + off) % (2 * Math.PI)) / (Math.PI / 4)) + 5) % 8;
 }
 
-/*───────────────────────────────────────────────
-  🔍 Debug helper: prints player position + direction
-───────────────────────────────────────────────*/
-/*───────────────────────────────────────────────
-  🔍 Debug helper: prints player position + direction
-───────────────────────────────────────────────*/
 /*───────────────────────────────────────────────
   🔍 Debug helper: prints player position + direction
 ───────────────────────────────────────────────*/
@@ -188,7 +191,7 @@ export function printPlayerPosition() {
 
   // ✅ Convert world → isometric tile coordinates (adjusted to match loadNewMap)
   const cr = worldToIso(
-    p.pos.x,               // use base position, not feet
+    p.pos.x,
     p.pos.y,
     map.mapData.width,
     map.mapData.height,
@@ -204,7 +207,7 @@ export function printPlayerPosition() {
 }
 
 function dirToText(d) {
-  const dirs = ['E','NE','N','NW','W','SW','S','SE'];
+  const dirs = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
   return dirs[d % 8] || '?';
 }
 

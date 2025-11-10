@@ -1,4 +1,4 @@
-// src/map/polygonEvents.js — hover pointer via CursorManager (centralized)
+// src/map/polygonEvents.js — hover pointer via CursorManager (centralized) + requireWalkUp with maneuver-node fallback
 'use strict';
 import {
   mouseWasPressed, mousePosScreen, screenToWorld,
@@ -17,6 +17,7 @@ export class PolygonEventSystem {
     this.activeTintTimer = 0;
     this.debug = debug;
     this.triggerSystem = null;
+    this.pendingEvent = null;
   }
 
   setTriggerSystem(triggerSystem) {
@@ -25,7 +26,7 @@ export class PolygonEventSystem {
 
   update() {
     if (!this.enabled || !this.map?.eventPolygons?.length) return;
-
+    const player = window.scene?.player;
     const worldMouse = screenToWorld(mousePosScreen);
     let newHover = null;
 
@@ -33,31 +34,33 @@ export class PolygonEventSystem {
     for (const poly of this.map.eventPolygons) {
       if (pointInPolygon(worldMouse, poly.pts)) {
         newHover = poly;
-        // 👉 Ask the CursorManager for pointer this frame
         requestPointer();
         break;
       }
     }
 
-    // Hover transition bookkeeping
     if (newHover !== this.hovered) {
       this.lastHovered = this.hovered;
       this.hovered = newHover;
     }
     this.fadeTimer = clamp(this.fadeTimer + (this.hovered ? 1 : -1) / 20, 0, 1);
 
-    // 🟡 Click
+    // 🟡 Click-to-trigger
     if (mouseWasPressed(0) && this.hovered) {
       const poly = this.hovered;
+      const scene = window.scene;
+      if (!scene) return;
+
       const requiresTrigger = poly.properties?.find(p => p.name === 'requiresTrigger')?.value?.trim();
       const blockedMsg = poly.properties?.find(p => p.name === 'blockedMessage')?.value?.trim();
+      const requireWalkUp = poly.properties?.find(p => p.name === 'requireWalkUp')?.value ?? false;
 
+      // 🔒 prerequisite logic
       if (requiresTrigger && this.triggerSystem) {
         const fired = this.triggerSystem.hasFired(requiresTrigger);
         if (!fired) {
-          const scene = window.scene;
+          const msg = blockedMsg || getDefaultBlockedMessage(poly.eventId, requiresTrigger);
           if (scene?.dialog) {
-            const msg = blockedMsg || getDefaultBlockedMessage(poly.eventId, requiresTrigger);
             scene.dialog.setMode('monologue');
             scene.dialog.visible = true;
             scene.dialog.setText(msg);
@@ -67,21 +70,75 @@ export class PolygonEventSystem {
         }
       }
 
-      // ✅ Execute event
-      const scene = window.scene;
-      if (scene?.dialog?.clearIfMonologue) scene.dialog.clearIfMonologue();
-      this.onEvent?.(poly);
+      window.__clickConsumed = true;
+
+      // 🚶 requireWalkUp navigation
+      if (requireWalkUp && player) {
+        const polyCenter = averagePoint(poly.pts);
+        let path = player.buildSmartPath(polyCenter);
+
+        // 🧭 reroute via nearest maneuver node if unreachable
+        if ((!path || !path.length) && scene.map?.maneuverNodes?.length) {
+          const nodes = scene.map.maneuverNodes;
+          const sorted = [...nodes].sort(
+            (a, b) => a.pos.distance(polyCenter) - b.pos.distance(polyCenter)
+          );
+          let reachableNode = null;
+          for (const n of sorted) {
+            const testPath = player.buildSmartPath(n.pos);
+            if (testPath?.length) {
+              reachableNode = n;
+              path = testPath;
+              break;
+            }
+          }
+          if (reachableNode)
+            console.log(`[PolygonEventSystem] Path to ${poly.eventId} rerouted via node ${reachableNode.id}`);
+          else
+            console.warn(`[PolygonEventSystem] Cannot reach polygon for ${poly.eventId}`);
+        }
+
+        if (path?.length) {
+          player.path = path;
+          this.pendingEvent = poly;
+          player.destinationMarker = polyCenter;
+          player.markerAlpha = 1.0;
+          player.markerScale = 1.0;
+        } else {
+          console.warn(`[PolygonEventSystem] No valid path for ${poly.eventId}`);
+        }
+      } else {
+        this.triggerEvent(poly);
+      }
+
       this.activeTintTimer = 0.25;
     }
 
+    // 🟢 Check if arrived to pending walk-up
+    if (this.pendingEvent && player) {
+      const feet = player.pos.add(player.feetOffset);
+      const poly = this.pendingEvent;
+      const center = averagePoint(poly.pts);
+      const arrived = feet.distance(center) < 0.8 && player.path.length === 0;
+      if (arrived) {
+        console.log(`[PolygonEventSystem] ✅ Arrived at event ${poly.eventId}`);
+        this.triggerEvent(poly);
+        this.pendingEvent = null;
+      }
+    }
+
     if (this.activeTintTimer > 0) this.activeTintTimer -= 1 / 60;
-    // (Rendering stays separate; GameScene calls renderHoverOverlay() during render)
+  }
+
+  triggerEvent(poly) {
+    const scene = window.scene;
+    if (scene?.dialog?.clearIfMonologue) scene.dialog.clearIfMonologue();
+    this.onEvent?.(poly);
   }
 
   renderHoverOverlay() {
     const poly = this.hovered || this.lastHovered;
     if (!poly || this.fadeTimer <= 0) return;
-
     const pts = poly.pts;
     const alpha = this.fadeTimer;
     const activeAlpha = Math.max(this.activeTintTimer * 2, alpha);
@@ -89,7 +146,6 @@ export class PolygonEventSystem {
     const fillColor = this.activeTintTimer > 0
       ? new Color(1, 0.5, 0.1, 0.35 * activeAlpha)
       : new Color(1, 0.9, 0.2, 0.25 * alpha);
-
     const lineColor = this.activeTintTimer > 0
       ? new Color(1, 0.6, 0.1, 0.9 * activeAlpha)
       : new Color(1, 1, 0.3, 0.8 * alpha);
@@ -102,7 +158,15 @@ export class PolygonEventSystem {
   }
 }
 
-/* Helpers unchanged */
+/*───────────────────────────────────────────────
+  Helpers
+───────────────────────────────────────────────*/
+function averagePoint(pts) {
+  let x = 0, y = 0;
+  for (const p of pts) { x += p.x; y += p.y; }
+  return vec2(x / pts.length, y / pts.length);
+}
+
 function getDefaultBlockedMessage(eventId, prereqId) {
   switch (eventId) {
     case 'window_scene_1':

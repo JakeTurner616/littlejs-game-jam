@@ -224,7 +224,7 @@ export class GameScene {
     await this.loadNewMap(MAP_PATH, SPAWN_C, SPAWN_R);
     await this.dialog.loadFont();
     this.dialog.setMode('monologue');
-    this.dialog.setText('Hello world.');
+    this.dialog.setText('In this small world, I feel something watching.');
     this.dialog.visible = true;
 
     await this.witchManager.preload();
