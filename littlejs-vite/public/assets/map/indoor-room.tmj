@@ -52,7 +52,7 @@
          "name":"walls",
          "opacity":1,
          "type":"tilelayer",
-         "visible":false,
+         "visible":true,
          "width":17,
          "x":0,
          "y":0
@@ -79,7 +79,7 @@
          "name":"walls-1",
          "opacity":1,
          "type":"tilelayer",
-         "visible":false,
+         "visible":true,
          "width":17,
          "x":0,
          "y":0
@@ -106,7 +106,7 @@
          "name":"walls-2",
          "opacity":1,
          "type":"tilelayer",
-         "visible":false,
+         "visible":true,
          "width":17,
          "x":0,
          "y":0
@@ -661,16 +661,16 @@
                  "name":"",
                  "polygon":[
                         {
-                         "x":0,
-                         "y":0
+                         "x":-16.6666666666665,
+                         "y":-39.3333333333333
                         }, 
                         {
-                         "x":98.6666666666666,
-                         "y":-2.66666666666652
+                         "x":83.9999999999998,
+                         "y":-30.6666666666667
                         }, 
                         {
-                         "x":94.6666666666666,
-                         "y":-126.666666666667
+                         "x":95.3333333333334,
+                         "y":-140.666666666667
                         }, 
                         {
                          "x":158.666666666667,
@@ -725,9 +725,9 @@
                         }],
                  "properties":[
                         {
-                         "name":"id",
+                         "name":"revealOnEventId",
                          "type":"string",
-                         "value":"main-room"
+                         "value":"doorTeleport_main_room"
                         }],
                  "rotation":0,
                  "type":"",
@@ -759,9 +759,9 @@
                         }],
                  "properties":[
                         {
-                         "name":"id",
+                         "name":"revealOnEventId",
                          "type":"string",
-                         "value":"side-room"
+                         "value":"doorTeleport_main_room"
                         }],
                  "rotation":0,
                  "type":"",

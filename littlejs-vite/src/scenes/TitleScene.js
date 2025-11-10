@@ -1,4 +1,4 @@
-// src/scenes/TitleScene.js — 🎬 DOMUS MINOR — atmospheric intro with typing monologue
+// src/scenes/TitleScene.js — 🎬 Dominion Minor — atmospheric intro with typing monologue
 'use strict';
 import {
   vec2, hsl, drawCanvas2D,
@@ -105,7 +105,7 @@ export class TitleScene {
     this.lighting.renderOverlay(vec2(0, 0));
 
     // ───────────────────────────── title logo
-    const title = 'DOMUS MINOR';
+    const title = 'Dominion Minor';
     const fontSize = 64 + Math.sin(t * 0.8) * 2;
     ctx.save();
     ctx.font = `${fontSize}px "Times New Roman", serif`;
