@@ -18,8 +18,8 @@ async function loadAtlas() {
 
   console.groupCollapsed('[mapLoader] Loading TextureAtlas');
   const [json, img] = await Promise.all([
-    fetch('/assets/map/Sprites/texture.json').then(r => r.json()),
-    loadImage('/assets/map/Sprites/texture.png')
+    fetch('./assets/map/Sprites/texture.json').then(r => r.json()),
+    loadImage('./assets/map/Sprites/texture.png')
   ]);
   atlasData = json.frames;
   atlasTexture = new TextureInfo(img);

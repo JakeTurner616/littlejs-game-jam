@@ -31,7 +31,7 @@ export const event = {
       check();
     });
 
-    const portrait = await getPortrait('/assets/portraits/doorway.png');
+    const portrait = await getPortrait('./assets/portraits/doorway.png');
     scene.dialog.portrait = portrait;
     scene.dialog.setMode('dialogue');
     scene.dialog.visible = true;
@@ -74,7 +74,7 @@ export const event = {
       await new Promise((r) => setTimeout(r, 500));
 
       // 🔹 perform the actual teleport
-      await scene.loadNewMap('/assets/map/inside.tmj', 9.857, 11.983);
+      await scene.loadNewMap('./assets/map/inside.tmj', 9.857, 11.983);
       scene.fog?.setBackgroundMode?.(false);
       scene.fog.enabled = true;
 

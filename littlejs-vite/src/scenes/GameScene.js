@@ -65,7 +65,7 @@ export class GameScene {
         this.inventory.addItem(
           'rusty_key',
           'RUSTY KEY',
-          '/assets/items/rusty_key.png',
+          './assets/items/rusty_key.png',
           'A corroded iron key. Its fragile shape may falter, yet it carries a faint sense of luck.',
           1, 1, 2,
           { dexterity: -5, faith: +10 } // 🗝️ penalty to dexterity, bonus to faith
@@ -80,7 +80,7 @@ export class GameScene {
         this.inventory.addItem(
           'music_box',
           'MUSIC BOX',
-          '/assets/items/musicbox.png',
+          './assets/items/musicbox.png',
           'A small music box that hums with quiet warmth.',
           1, 2, 2,
           { willpower: +15, faith: +5 } // 🎶 boosts willpower & faith
@@ -212,7 +212,7 @@ export class GameScene {
   // ──────────────────────────────────────────────
   async onEnter() {
     const PPU = 128;
-    const MAP_PATH = '/assets/map/outside.tmj';
+    const MAP_PATH = './assets/map/outside.tmj';
     const SPAWN_C = 3.99;
     const SPAWN_R = 11.49;
 

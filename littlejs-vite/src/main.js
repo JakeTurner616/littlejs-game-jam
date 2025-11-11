@@ -17,47 +17,47 @@ setSoundVolume(0.6);
 setSoundDefaultRange(40);
 
 const playerTextures = [
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir1.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir2.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir3.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir4.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir5.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir6.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir7.png',
-  '/assets/little-man/littleman-idle/littleman-idle-small_export_dir8.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir1.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir2.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir3.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir4.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir5.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir6.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir7.png',
-  '/assets/little-man/littleman-walking/littleman-walking-small_export_dir8.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir1.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir2.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir3.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir4.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir5.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir6.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir7.png',
-  '/assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir8.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir1.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir2.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir3.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir4.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir5.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir6.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir7.png',
+  './assets/little-man/littleman-idle/littleman-idle-small_export_dir8.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir1.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir2.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir3.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir4.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir5.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir6.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir7.png',
+  './assets/little-man/littleman-walking/littleman-walking-small_export_dir8.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir1.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir2.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir3.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir4.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir5.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir6.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir7.png',
+  './assets/little-man/littleman-take/littleman-take-fullanimate_export_ArmaturemixamocomLayer0_dir8.png',
 ];
 
 const mapAssets = [
-  '/assets/map/inside.tmj',
-  '/assets/map/outside.tmj',
-  '/assets/map/indoor-room.tmj',
-  '/assets/map/cornfield.tmj',
+  './assets/map/inside.tmj',
+  './assets/map/outside.tmj',
+  './assets/map/indoor-room.tmj',
+  './assets/map/cornfield.tmj',
 ];
 
 const portraitTextures = [
-  '/assets/portraits/doorway.png',
-  '/assets/portraits/window_face.png',
+  './assets/portraits/doorway.png',
+  './assets/portraits/window_face.png',
 ];
 preloadPortraits(portraitTextures);
 
 const witchTextures = [
-  '/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
+  './assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir1.png',
 ];
 
 const preloadImages = [

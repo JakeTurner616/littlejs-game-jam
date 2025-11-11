@@ -11,14 +11,14 @@ export const DebugStateManager = {
   states: {
     start: {
       description: 'Outdoor starting area',
-      map: '/assets/map/inside.tmj',
+      map: './assets/map/inside.tmj',
       c: 3.99,
       r: 11.49,
       type: 'outdoor'
     },
     indoor_entry: {
       description: 'Indoor after door teleport 2',
-      map: '/assets/map/indoor-room.tmj',
+      map: './assets/map/indoor-room.tmj',
       c: 6.25,
       r: 8.75,
       type: 'indoor'

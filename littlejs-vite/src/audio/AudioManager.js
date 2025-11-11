@@ -67,6 +67,6 @@ export class AudioManager {
 export const audioManager = new AudioManager();
 
 // ✅ Preload global SFX
-audioManager.loadSound('door_open', '/assets/audio/door-open.ogg');
-audioManager.loadSound('jump_scare', '/assets/audio/jump-scare-sound.ogg');
-audioManager.loadSound('music_box', '/assets/audio/music-box.ogg');
+audioManager.loadSound('door_open', './assets/audio/door-open.ogg');
+audioManager.loadSound('jump_scare', './assets/audio/jump-scare-sound.ogg');
+audioManager.loadSound('music_box', './assets/audio/music-box.ogg');

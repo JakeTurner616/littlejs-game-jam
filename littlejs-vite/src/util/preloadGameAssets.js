@@ -4,7 +4,7 @@ import { vec2 } from 'littlejsengine';
 import { loadTiledMap } from '../map/mapLoader.js';
 import { PlayerController } from '../character/playerController.js';
 
-const MAP_PATH = '/assets/map/outside.tmj';
+const MAP_PATH = './assets/map/outside.tmj';
 const PPU = 128;
 
 export let cachedMap = null;

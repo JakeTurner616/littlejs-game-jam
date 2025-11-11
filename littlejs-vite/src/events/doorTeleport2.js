@@ -66,7 +66,7 @@ export const event = {
     // 🗣️ Dialogue intro
     if (scene.dialog.visible) scene.dialog.visible = false;
     scene.dialog.setMode('dialogue');
-    await scene.dialog.loadPortrait('/assets/portraits/doorway.png');
+    await scene.dialog.loadPortrait('./assets/portraits/doorway.png');
     scene.dialog.visible = true;
 
     const intro =
@@ -105,7 +105,7 @@ export const event = {
           }
 
           // 🗺️ Switch to new map (indoor)
-          await scene.loadNewMap('/assets/map/indoor-room.tmj', 5.90, 8.00);
+          await scene.loadNewMap('./assets/map/indoor-room.tmj', 5.90, 8.00);
           console.log('[doorTeleport2] Loaded new map: indoor-room.tmj');
 
           player.direction = 6; // S

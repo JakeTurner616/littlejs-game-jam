@@ -30,7 +30,7 @@ export class ObjectSystem {
       if (!spriteProp?.value) continue;
 
       const spriteName = spriteProp.value;
-      const imgPath = `/assets/objects/${spriteName}.png`;
+      const imgPath = `./assets/objects/${spriteName}.png`;
       const img = await loadImage(imgPath);
 
       const texInfo = new TextureInfo(img);

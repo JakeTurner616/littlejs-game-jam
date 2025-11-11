@@ -20,7 +20,7 @@ export const event = {
     await new Promise(r => setTimeout(r, 500));
 
     // load target map
-    await scene.loadNewMap('/assets/map/side_room.tmj', 4.2, 8.4);
+    await scene.loadNewMap('./assets/map/side_room.tmj', 4.2, 8.4);
     scene.fog.enabled = true;
     scene.lighting.triggerLightning(0.3);
 

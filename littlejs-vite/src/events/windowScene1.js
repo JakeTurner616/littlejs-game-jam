@@ -24,7 +24,7 @@ export const event = {
     // Phase 2: dialogue
     scene.dialog.setMode('dialogue');
     player.frozen = true;
-    await scene.dialog.loadPortrait('/assets/portraits/window_face.png');
+    await scene.dialog.loadPortrait('./assets/portraits/window_face.png');
     scene.dialog.visible = true;
 
     const intro =

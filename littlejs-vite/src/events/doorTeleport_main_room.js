@@ -18,7 +18,7 @@ export const event = {
 
     await new Promise(r => setTimeout(r, 500));
 
-    await scene.loadNewMap('/assets/map/main_room.tmj', 7.0, 9.5);
+    await scene.loadNewMap('./assets/map/main_room.tmj', 7.0, 9.5);
     scene.fog?.setBackgroundMode?.(false);
     scene.fog.enabled = true;
     scene.lighting.triggerLightning(0.5);

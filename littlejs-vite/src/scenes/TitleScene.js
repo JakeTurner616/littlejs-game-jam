@@ -68,7 +68,7 @@ export class TitleScene {
 
     if (this.assetsReady && !this.musicStarted) {
       try {
-        audioManager.playMusic('/assets/audio/sh2-Forest-Custom-Cover-with-thunder.ogg', 0.35, true);
+        audioManager.playMusic('./assets/audio/sh2-Forest-Custom-Cover-with-thunder.ogg', 0.35, true);
         this.musicStarted = true;
       } catch (e) {
         console.warn('[TitleScene] Could not play music:', e);

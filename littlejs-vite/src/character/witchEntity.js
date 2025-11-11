@@ -50,7 +50,7 @@ export class WitchEntity {
 
   async load() {
     const dirIndex = this.direction + 1;
-    const base = `/assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir${dirIndex}`;
+    const base = `./assets/witch/ghost_woman_idle/ghost-woman-idle_export_ArmaturemixamocomLayer0001_dir${dirIndex}`;
     const jsonPath = `${base}.json`;
     const pngPath = `${base}.png`;
     const res = await fetch(jsonPath);

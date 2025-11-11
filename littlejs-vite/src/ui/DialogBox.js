@@ -42,7 +42,7 @@ export class DialogBox {
   }
 
   async loadFont() {
-    const fontFace = new FontFace('GameFont', 'url(/assets/font/Estonia-Regular.woff2)');
+    const fontFace = new FontFace('GameFont', 'url(./assets/font/Estonia-Regular.woff2)');
     await fontFace.load();
     document.fonts.add(fontFace);
     this.fontFamily = 'GameFont';
