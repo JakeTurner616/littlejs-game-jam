@@ -123,12 +123,12 @@ export class PlayerController {
     drawTile(this.pos.add(vec2(0, 0.5)), s, tex, undefined, 0, 0, Color.white);
 
     // feet dot
-    drawRect(this.pos.add(this.feetOffset), vec2(0.06, 0.06),
-      this.noclip ? new Color(1, 1, 0, 1) : new Color(1, 0, 1, 1));
+    //drawRect(this.pos.add(this.feetOffset), vec2(0.06, 0.06),
+      //this.noclip ? new Color(1, 1, 0, 1) : new Color(1, 0, 1, 1));
 
     // path debug
-    for (let i = 0; i < this.path.length - 1; i++)
-      drawLine(this.path[i], this.path[i + 1], 0.03, new Color(0, 1, 0, 0.4));
+    //for (let i = 0; i < this.path.length - 1; i++)
+      //drawLine(this.path[i], this.path[i + 1], 0.03, new Color(0, 1, 0, 0.4));
 
     // 🟩 debug sprite bounds
     if (isDebugMapEnabled()) {

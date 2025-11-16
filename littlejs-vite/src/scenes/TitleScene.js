@@ -93,11 +93,7 @@ export class TitleScene {
 
     // ───────────────────────────── background tint
     drawCanvas2D(vec2(0, 0), vec2(20, 12), 0, false, (g) => {
-      const grd = g.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(w, h) * 0.6);
-      grd.addColorStop(0, hsl(0.65, 0.2, 0.05 + 0.05 * fade).toString());
-      grd.addColorStop(1, hsl(0.65, 0.4, 0.01).toString());
-      g.fillStyle = grd;
-      g.fillRect(-1, -1, 2, 2);
+
     }, false, ctx);
 
     // ───────────────────────────── rain + lightning overlay
@@ -124,19 +120,12 @@ export class TitleScene {
 
     // ───────────────────────────── press prompt (after monologue)
     if (!this.dialog.isActive()) {
-      if (this.assetsReady && this.showPrompt) {
+      if (!this.assetsReady) {
         ctx.save();
-        ctx.font = '22px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = `rgba(255,255,200,${0.7 + 0.3 * Math.sin(t * 3)})`;
-        ctx.fillText('PRESS ENTER TO BEGIN', w / 2, h * 0.88);
-        ctx.restore();
-      } else if (!this.assetsReady) {
-        ctx.save();
-        ctx.font = '22px monospace';
+        ctx.font = `${fontSize}px "Times New Roman", serif`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.fillText('LOADING...', w / 2, h * 0.88);
+        ctx.fillText('...', w / 2, h * 0.88);
         ctx.restore();
       }
     }
@@ -146,7 +135,7 @@ export class TitleScene {
     ctx.font = '14px monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText('© 1998 LUNAR ARCHIVE SOFTWARE', 40, 40);
+    ctx.fillText('© 2025 JakeTurner616', 40, 40);
     ctx.restore();
 
     // ───────────────────────────── fade from black

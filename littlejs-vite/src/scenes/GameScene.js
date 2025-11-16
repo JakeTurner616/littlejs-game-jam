@@ -24,7 +24,8 @@ import { initPaintSystem, updatePaintSystem } from '../map/paintSystem.js';
 import { ItemSystem } from '../map/itemSystem.js';
 import { beginFrame as cursorBeginFrame, apply as cursorApply } from '../ui/CursorManager.js';
 import { fadeAudioSystem } from '../audio/FadeAudioSystem.js';
-import { SkillCheckSystem } from '../rpg/SkillCheckSystem.js'; // ✅ added import
+import { SkillCheckSystem } from '../rpg/SkillCheckSystem.js';
+import { overlayContext } from 'littlejsengine';
 
 setDebugMapEnabled(false);
 
@@ -278,11 +279,23 @@ export class GameScene {
   // ──────────────────────────────────────────────
   // Render world layer
   // ──────────────────────────────────────────────
-  render() {
-    if (!this.isLoaded()) {
-      drawText('Loading...', vec2(0, 0), 0.5, hsl(0.1, 1, 0.7));
-      return;
-    }
+render() {
+  const ctx = overlayContext; // ← add this
+
+  if (!this.isLoaded()) {
+    const fontSize = 48;   // pick a consistent fallback size
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+
+    ctx.save();
+    ctx.font = `${fontSize}px "Times New Roman", serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText('loading...', w / 2, h * 0.88);
+    ctx.restore();
+
+    return;
+  }
 
     const cam = this.player.pos;
     this.lighting.renderBase(cam);
